@@ -1,2 +1,2 @@
--- Synthetic development fixtures will be added with the product schema.
+-- Keep runtime data out of seeds; pgTAP creates isolated synthetic fixtures.
 -- Never place private essays, real email addresses, or API keys in this file.

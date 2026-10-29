@@ -15,6 +15,7 @@
     "functions:serve": "supabase functions serve --network-id essaypilot-local --env-file supabase/.env.local",
     "check": "deno task check",
     "test": "deno task test",
+    "test:db": "supabase test db --local --network-id essaypilot-local supabase/tests",
     "ios:generate": "./scripts/generate-ios.sh",
     "ios:build": "./scripts/build-ios.sh",
     "ios:run": "./scripts/run-ios.sh",

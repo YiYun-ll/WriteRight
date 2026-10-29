@@ -1,3 +1,6 @@
-// Copy to Local.xcconfig for private local signing overrides.
+// Copy to Local.xcconfig for local signing and client-public Supabase configuration.
 // DEVELOPMENT_TEAM = YOUR_APPLE_TEAM_ID
+// SUPABASE_HOST = your-project.supabase.co
+// SUPABASE_PUBLISHABLE_KEY = your_publishable_or_anon_key
+// For a running local backend, use SUPABASE_HOST = 127.0.0.1:54321.
 // Do not put DeepSeek keys or Supabase secret/service-role keys here.
