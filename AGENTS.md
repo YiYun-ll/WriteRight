@@ -5,6 +5,9 @@
 - The user selected `deepseek-flash` for grading and task parsing, with base URL `https://api.deepseek.com`. This overrides the original document's suggested Pro default.
 - Read relevant sections of `EssayPilot_V1_需求分析与系统设计.md` for each task. It is a specification, not evidence that features are implemented.
 - Use Chinese for explanations and task handoffs. Keep code identifiers in English.
+- Product display name: WriteRight. Keep EssayPilot as the repository/module identity.
+- Follow `WriteRight_分阶段开发计划.md` and update actual stage evidence at handoff.
+- Follow `docs/DesignSystem.md`: express hierarchy through layout; omit decorative badges, redundant subtitles and technical implementation labels from product screens. Keep actionable errors, privacy, AI uncertainty and accessibility information.
 - Keep work scoped to the current task. Do not claim success without running the applicable checks.
 
 ## Architecture and product constraints

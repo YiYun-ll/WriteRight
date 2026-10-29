@@ -17,7 +17,9 @@
     "test": "deno task test",
     "ios:generate": "./scripts/generate-ios.sh",
     "ios:build": "./scripts/build-ios.sh",
-    "ios:run": "./scripts/run-ios.sh"
+    "ios:run": "./scripts/run-ios.sh",
+    "test:ios": "./scripts/test-ios.sh",
+    "poc:grading": "deno run --env-file=supabase/.env.local --allow-env=DEEPSEEK_API_KEY,DEEPSEEK_BASE_URL,DEFAULT_GRADING_MODEL --allow-net=api.deepseek.com,127.0.0.1:7890 --allow-write=artifacts scripts/poc-grading.ts --live"
   },
   "devDependencies": {
     "supabase": "2.122.0"

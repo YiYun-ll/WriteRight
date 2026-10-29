@@ -1,14 +1,21 @@
-# EssayPilot
+# WriteRight
 
 考研英语（二）AI 作文批改原生 iOS App。目标技术栈为 SwiftUI、SwiftData、VisionKit/Vision、Supabase 和 DeepSeek。
 
-当前交付范围是**开发环境与工程骨架**。登录、作文编辑、OCR、真实批改和云同步等产品功能尚未实现。
+面向用户的名称为 **WriteRight**，仓库与 Swift 模块保留 EssayPilot。
 
+当前已完成品牌与图标、四页导航和本地写作闭环：题目确认、自动保存、重启恢复、历史搜索与筛选。模型 Provider、共享 Schema 和工程 PoC 已验证。账号、在线批改报告、OCR、云同步及学习分析仍按后续阶段实施。
+
+- [分阶段开发计划与验收](WriteRight_分阶段开发计划.md)
 - [产品与系统设计](EssayPilot_V1_需求分析与系统设计.md)
 - [开发环境与工具协作](docs/DevelopmentSetup.md)
 - [本机实际准备与验证结果](docs/EnvironmentStatus.md)
 - [开发进度](docs/progress.md)
 - [AI 工具共同规则](AGENTS.md)
+- [设计规范](docs/DesignSystem.md)
+- [模型工程验证记录](docs/P3_ModelValidation.md)
+
+页面预览：[首页](design/previews/home-light.png)、[编辑](design/previews/editor.png)、[深色大字号](design/previews/home-dark-accessibility.png)。
 
 ## 开始开发
 
@@ -36,6 +43,7 @@ iOS 开发：使用完整 Xcode 打开 `ios/EssayPilot.xcodeproj`。修改工程
 npm run ios:generate
 npm run ios:build
 npm run ios:run
+npm run test:ios
 ```
 
 ## 目录
@@ -43,9 +51,11 @@ npm run ios:run
 ```text
 ios/                  SwiftUI 工程与 XcodeGen 定义
 supabase/             本地配置、迁移、Edge Functions
-schemas/              后续添加共享 JSON Schema
-prompts/              后续添加版本化评分与纠错 Prompt
-tests/backend/        后端工具链与健康检查测试
+schemas/              共享 JSON Schema 的链接入口
+supabase/functions/_shared/grading/  版本化 Rubric/Prompt、Provider 与校验器
+tests/backend/        批改校验、Provider 与健康检查测试
+tests/fixtures/       合成工程样本（不作为人工 Golden Set）
+design/               原创图标、实际生成提示词和模拟器截图
 scripts/              环境检查与启动/构建脚本
 docs/                 环境、进度和验证记录
 ```

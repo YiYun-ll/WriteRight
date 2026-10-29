@@ -7,22 +7,74 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		07C0FBCD52185176ADD7869E /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46129FCA488F05615591B712 /* AppModel.swift */; };
+		0AD5CC8299DF9A5D6001F68D /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBA4D09FCC75B9DE42AA78B6 /* HistoryView.swift */; };
+		24792BD51B28E8B457E14E4C /* HomeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C25995E2FAA2A4BEAABBDBAC /* HomeView.swift */; };
+		25A86B0E280E892AE76F9B94 /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = 952283FEBA3C817A342FD0F6 /* Theme.swift */; };
+		3288E3D69EF5ECFEC2E5D790 /* WritingDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = A426EEEBE69497F0025BACCC /* WritingDocument.swift */; };
+		63098A28D1F87D0F6681C84E /* WritingText.swift in Sources */ = {isa = PBXBuildFile; fileRef = C50681A6879E33DBB3E5003B /* WritingText.swift */; };
 		657D559A680B4CCA20ABC235 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27144391513644A5D0CABE3 /* ContentView.swift */; };
+		8F3815A863813AA2A82D1219 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2502126F8B87B168E8CC3426 /* SettingsView.swift */; };
+		9F99BA69EDD4B90D36CAE86D /* WritingFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F7BF10161BB3BBF83556900 /* WritingFlowTests.swift */; };
+		A88779F79154621C0BA48B6F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 686A33C9084A875A95245E6E /* Assets.xcassets */; };
+		AC9B744D83C386917C3134DB /* EssayEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000E034A5FA64595FC7411E7 /* EssayEditorView.swift */; };
+		E06A4471393D2E2C209A4B05 /* LocalWritingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2428EB1A27653D52E15503B /* LocalWritingStore.swift */; };
+		E35A608141622FF1E284D66C /* WritingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D7E536F3D4B37CDD77FF4DE1 /* WritingTests.swift */; };
 		FDAAF476AA3FA01FF355A2C4 /* EssayPilotApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC090603A91588ACD9D4F374 /* EssayPilotApp.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		42AE8028C908F661F0C3F95E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 66BF8B0CC1DA4DA481190AE0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3B5A22BD31752E6E61F551EB;
+			remoteInfo = EssayPilot;
+		};
+		69AB3F932C870C75DF63397D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 66BF8B0CC1DA4DA481190AE0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 3B5A22BD31752E6E61F551EB;
+			remoteInfo = EssayPilot;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
+		000E034A5FA64595FC7411E7 /* EssayEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EssayEditorView.swift; sourceTree = "<group>"; };
+		216629FE08260745AD6C5CA9 /* EssayPilotTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = EssayPilotTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		2502126F8B87B168E8CC3426 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		46129FCA488F05615591B712 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
+		686A33C9084A875A95245E6E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		7D8A3FF55AC6340332BEFACF /* Development.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Development.xcconfig; sourceTree = "<group>"; };
+		7F7BF10161BB3BBF83556900 /* WritingFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WritingFlowTests.swift; sourceTree = "<group>"; };
+		952283FEBA3C817A342FD0F6 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		98E6C4F773C66BA5902A495E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		A426EEEBE69497F0025BACCC /* WritingDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WritingDocument.swift; sourceTree = "<group>"; };
 		B27144391513644A5D0CABE3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		BF455F129F8AF1CC3E836DD7 /* EssayPilotUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = EssayPilotUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		C25995E2FAA2A4BEAABBDBAC /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
+		C50681A6879E33DBB3E5003B /* WritingText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WritingText.swift; sourceTree = "<group>"; };
+		D2428EB1A27653D52E15503B /* LocalWritingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalWritingStore.swift; sourceTree = "<group>"; };
+		D7E536F3D4B37CDD77FF4DE1 /* WritingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WritingTests.swift; sourceTree = "<group>"; };
+		DBA4D09FCC75B9DE42AA78B6 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		E62B1F813522A7CB2AE03F5F /* EssayPilot.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = EssayPilot.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		FC090603A91588ACD9D4F374 /* EssayPilotApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EssayPilotApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+		0286128BD6D820D345C1EA2A /* History */ = {
+			isa = PBXGroup;
+			children = (
+				DBA4D09FCC75B9DE42AA78B6 /* HistoryView.swift */,
+			);
+			path = History;
+			sourceTree = "<group>";
+		};
 		08CAEC98D716D1702FB3F7CA /* App */ = {
 			isa = PBXGroup;
 			children = (
+				46129FCA488F05615591B712 /* AppModel.swift */,
 				B27144391513644A5D0CABE3 /* ContentView.swift */,
 				FC090603A91588ACD9D4F374 /* EssayPilotApp.swift */,
 			);
@@ -33,8 +85,61 @@
 			isa = PBXGroup;
 			children = (
 				08CAEC98D716D1702FB3F7CA /* App */,
+				F6E34F7826FFA27201A8378D /* Core */,
+				A7336C1F2164C49FE8A880C9 /* Domain */,
+				4416C27EA31A37BA4028F7C8 /* Features */,
+				89D3D90DD41C215BDFEA5280 /* Persistence */,
+				13D5CB2822F51E8CAA2211FD /* Resources */,
 			);
 			path = EssayPilot;
+			sourceTree = "<group>";
+		};
+		0A522F0EA74E5E2269224FF6 /* Editor */ = {
+			isa = PBXGroup;
+			children = (
+				000E034A5FA64595FC7411E7 /* EssayEditorView.swift */,
+			);
+			path = Editor;
+			sourceTree = "<group>";
+		};
+		0DE66A5A29A3F0B84E813D2B /* EssayPilotTests */ = {
+			isa = PBXGroup;
+			children = (
+				D7E536F3D4B37CDD77FF4DE1 /* WritingTests.swift */,
+			);
+			path = EssayPilotTests;
+			sourceTree = "<group>";
+		};
+		13D5CB2822F51E8CAA2211FD /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				686A33C9084A875A95245E6E /* Assets.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		2842F01AE3473FC90C5D8836 /* Design */ = {
+			isa = PBXGroup;
+			children = (
+				952283FEBA3C817A342FD0F6 /* Theme.swift */,
+			);
+			path = Design;
+			sourceTree = "<group>";
+		};
+		3D55771A866A8BD7C2066A16 /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				2502126F8B87B168E8CC3426 /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		3D8B0E202F6DEBA267B558C8 /* Text */ = {
+			isa = PBXGroup;
+			children = (
+				C50681A6879E33DBB3E5003B /* WritingText.swift */,
+			);
+			path = Text;
 			sourceTree = "<group>";
 		};
 		3DBEBA03E6B4C26D25F6CD3E = {
@@ -42,16 +147,63 @@
 			children = (
 				C72A89CCD635B5C7C72C5055 /* Config */,
 				09E8CE3A38D95A6CFA6933B1 /* EssayPilot */,
+				0DE66A5A29A3F0B84E813D2B /* EssayPilotTests */,
+				75DE1448F92559471F05C3C6 /* EssayPilotUITests */,
 				987751BBEECF51F8575B6780 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		4416C27EA31A37BA4028F7C8 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				0A522F0EA74E5E2269224FF6 /* Editor */,
+				0286128BD6D820D345C1EA2A /* History */,
+				C077649D93F90256656909D5 /* Home */,
+				3D55771A866A8BD7C2066A16 /* Settings */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		75DE1448F92559471F05C3C6 /* EssayPilotUITests */ = {
+			isa = PBXGroup;
+			children = (
+				7F7BF10161BB3BBF83556900 /* WritingFlowTests.swift */,
+			);
+			path = EssayPilotUITests;
+			sourceTree = "<group>";
+		};
+		89D3D90DD41C215BDFEA5280 /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+				D2428EB1A27653D52E15503B /* LocalWritingStore.swift */,
+			);
+			path = Persistence;
 			sourceTree = "<group>";
 		};
 		987751BBEECF51F8575B6780 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				E62B1F813522A7CB2AE03F5F /* EssayPilot.app */,
+				216629FE08260745AD6C5CA9 /* EssayPilotTests.xctest */,
+				BF455F129F8AF1CC3E836DD7 /* EssayPilotUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A7336C1F2164C49FE8A880C9 /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				A426EEEBE69497F0025BACCC /* WritingDocument.swift */,
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
+		C077649D93F90256656909D5 /* Home */ = {
+			isa = PBXGroup;
+			children = (
+				C25995E2FAA2A4BEAABBDBAC /* HomeView.swift */,
+			);
+			path = Home;
 			sourceTree = "<group>";
 		};
 		C72A89CCD635B5C7C72C5055 /* Config */ = {
@@ -63,14 +215,42 @@
 			path = Config;
 			sourceTree = "<group>";
 		};
+		F6E34F7826FFA27201A8378D /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				2842F01AE3473FC90C5D8836 /* Design */,
+				3D8B0E202F6DEBA267B558C8 /* Text */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		3423975CF1BF7945EFF9C1AC /* EssayPilotUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 179C1CE0D19CD9324B097BE1 /* Build configuration list for PBXNativeTarget "EssayPilotUITests" */;
+			buildPhases = (
+				0DFD2A41ADD293E9D3A5047F /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E4D10F7540F53C76C5196D68 /* PBXTargetDependency */,
+			);
+			name = EssayPilotUITests;
+			packageProductDependencies = (
+			);
+			productName = EssayPilotUITests;
+			productReference = BF455F129F8AF1CC3E836DD7 /* EssayPilotUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 		3B5A22BD31752E6E61F551EB /* EssayPilot */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 188AED90E966B42F3F30D611 /* Build configuration list for PBXNativeTarget "EssayPilot" */;
 			buildPhases = (
 				A0B1A6DE4DFC3BBD7C913223 /* Sources */,
+				EBE30539C89E609E05ABD432 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -83,6 +263,24 @@
 			productReference = E62B1F813522A7CB2AE03F5F /* EssayPilot.app */;
 			productType = "com.apple.product-type.application";
 		};
+		BE03E02F3707775A367DB9C7 /* EssayPilotTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F9BC5D335322D723FCF445C2 /* Build configuration list for PBXNativeTarget "EssayPilotTests" */;
+			buildPhases = (
+				346E73536714928BFCE77D34 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1CFF4A714CA1B768B0F0A544 /* PBXTargetDependency */,
+			);
+			name = EssayPilotTests;
+			packageProductDependencies = (
+			);
+			productName = EssayPilotTests;
+			productReference = 216629FE08260745AD6C5CA9 /* EssayPilotTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -92,7 +290,14 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					3423975CF1BF7945EFF9C1AC = {
+						ProvisioningStyle = Automatic;
+						TestTargetID = 3B5A22BD31752E6E61F551EB;
+					};
 					3B5A22BD31752E6E61F551EB = {
+						ProvisioningStyle = Automatic;
+					};
+					BE03E02F3707775A367DB9C7 = {
 						ProvisioningStyle = Automatic;
 					};
 				};
@@ -112,21 +317,72 @@
 			projectRoot = "";
 			targets = (
 				3B5A22BD31752E6E61F551EB /* EssayPilot */,
+				BE03E02F3707775A367DB9C7 /* EssayPilotTests */,
+				3423975CF1BF7945EFF9C1AC /* EssayPilotUITests */,
 			);
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		EBE30539C89E609E05ABD432 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A88779F79154621C0BA48B6F /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
+		0DFD2A41ADD293E9D3A5047F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9F99BA69EDD4B90D36CAE86D /* WritingFlowTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		346E73536714928BFCE77D34 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E35A608141622FF1E284D66C /* WritingTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		A0B1A6DE4DFC3BBD7C913223 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				07C0FBCD52185176ADD7869E /* AppModel.swift in Sources */,
 				657D559A680B4CCA20ABC235 /* ContentView.swift in Sources */,
+				AC9B744D83C386917C3134DB /* EssayEditorView.swift in Sources */,
 				FDAAF476AA3FA01FF355A2C4 /* EssayPilotApp.swift in Sources */,
+				0AD5CC8299DF9A5D6001F68D /* HistoryView.swift in Sources */,
+				24792BD51B28E8B457E14E4C /* HomeView.swift in Sources */,
+				E06A4471393D2E2C209A4B05 /* LocalWritingStore.swift in Sources */,
+				8F3815A863813AA2A82D1219 /* SettingsView.swift in Sources */,
+				25A86B0E280E892AE76F9B94 /* Theme.swift in Sources */,
+				3288E3D69EF5ECFEC2E5D790 /* WritingDocument.swift in Sources */,
+				63098A28D1F87D0F6681C84E /* WritingText.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		1CFF4A714CA1B768B0F0A544 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3B5A22BD31752E6E61F551EB /* EssayPilot */;
+			targetProxy = 69AB3F932C870C75DF63397D /* PBXContainerItemProxy */;
+		};
+		E4D10F7540F53C76C5196D68 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 3B5A22BD31752E6E61F551EB /* EssayPilot */;
+			targetProxy = 42AE8028C908F661F0C3F95E /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		00828350ACADC283DB476A25 /* Release */ = {
@@ -195,7 +451,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "EssayPilot Dev";
+				INFOPLIST_KEY_CFBundleDisplayName = WriteRight;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -209,6 +465,23 @@
 			};
 			name = Debug;
 		};
+		3D7F09261F10F99BC53096A4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.yiyun.EssayPilotTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/EssayPilot.app/EssayPilot";
+			};
+			name = Debug;
+		};
 		45219B286C9C5E3E78A574B1 /* Release */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 98E6C4F773C66BA5902A495E /* Release.xcconfig */;
@@ -217,7 +490,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = "EssayPilot Dev";
+				INFOPLIST_KEY_CFBundleDisplayName = WriteRight;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -228,6 +501,23 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.yiyun.essaypilot.dev;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		A22E5FC13E8C0BCA35AD20AA /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.yiyun.EssayPilotTests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/EssayPilot.app/EssayPilot";
 			};
 			name = Release;
 		};
@@ -296,9 +586,52 @@
 			};
 			name = Debug;
 		};
+		C7D6283503419224B85239CD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.yiyun.EssayPilotUITests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = EssayPilot;
+			};
+			name = Debug;
+		};
+		E13D19DB79A94074D8D6C33A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.yiyun.EssayPilotUITests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = EssayPilot;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		179C1CE0D19CD9324B097BE1 /* Build configuration list for PBXNativeTarget "EssayPilotUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C7D6283503419224B85239CD /* Debug */,
+				E13D19DB79A94074D8D6C33A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		188AED90E966B42F3F30D611 /* Build configuration list for PBXNativeTarget "EssayPilot" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -313,6 +646,15 @@
 			buildConfigurations = (
 				BB21926057FF39704FBCC41B /* Debug */,
 				00828350ACADC283DB476A25 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		F9BC5D335322D723FCF445C2 /* Build configuration list for PBXNativeTarget "EssayPilotTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3D7F09261F10F99BC53096A4 /* Debug */,
+				A22E5FC13E8C0BCA35AD20AA /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
