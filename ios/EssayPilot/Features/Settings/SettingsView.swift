@@ -19,6 +19,25 @@ struct SettingsView: View {
                 }.padding(.vertical, 12)
             }
             Section {
+                if let account = model.account {
+                    NavigationLink { AccountView() } label: {
+                        Label(account.email, systemImage: "person.crop.circle")
+                            .lineLimit(1).truncationMode(.middle)
+                    }
+                    if model.guestDraftCount > 0 {
+                        Button {
+                            model.migrateGuestDrafts()
+                        } label: {
+                            Label("迁入本机草稿（\(model.guestDraftCount)）", systemImage: "tray.and.arrow.down")
+                        }.accessibilityIdentifier("migrate-guest-drafts")
+                    }
+                } else {
+                    NavigationLink { LoginView() } label: {
+                        Label("登录", systemImage: "person.crop.circle")
+                    }.accessibilityIdentifier("login-link")
+                }
+            }
+            Section {
                 Picker("外观", selection: $appearance) {
                     Text("跟随系统").tag("system")
                     Text("浅色").tag("light")

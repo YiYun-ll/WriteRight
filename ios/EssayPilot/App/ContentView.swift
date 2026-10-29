@@ -35,6 +35,7 @@ struct ContentView: View {
             }
         }
         .background(WriteRightTheme.background)
+        .task { await model.observeAuth() }
         .alert("需要处理", isPresented: Binding(get: { model.isReady && model.errorMessage != nil }, set: { if !$0 { model.errorMessage = nil } })) {
             Button("重试", action: model.refresh)
             Button("关闭", role: .cancel) { model.errorMessage = nil }

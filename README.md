@@ -4,7 +4,7 @@
 
 面向用户的名称为 **WriteRight**，仓库与 Swift 模块保留 EssayPilot。
 
-当前已完成品牌与图标、四页导航和本地写作闭环：题目确认、自动保存、重启恢复、历史搜索与筛选。模型 Provider、共享 Schema 和工程 PoC 已验证。账号、在线批改报告、OCR、云同步及学习分析仍按后续阶段实施。
+当前已完成品牌与图标、四页导航、本地写作闭环和账号权限基础：题目确认、自动保存、重启恢复、历史搜索与筛选、邮箱 OTP、Keychain 会话、账号分库、RLS 与私有 Storage。模型 Provider、共享 Schema 和工程 PoC 已验证。在线批改报告、OCR、云同步及学习分析仍按后续阶段实施。
 
 - [分阶段开发计划与验收](WriteRight_分阶段开发计划.md)
 - [产品与系统设计](EssayPilot_V1_需求分析与系统设计.md)
@@ -30,6 +30,7 @@ npm test
 
 ```bash
 npm run backend:start
+npm run test:db
 npm run functions:serve
 ```
 
