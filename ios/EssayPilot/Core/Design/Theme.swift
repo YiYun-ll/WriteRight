@@ -1,5 +1,17 @@
 import SwiftUI
 
+struct BrandWordmark: View {
+    var size: CGFloat = 34
+    var relativeTo: Font.TextStyle = .largeTitle
+
+    var body: some View {
+        Text("WriteRight")
+            .font(.custom("TimesNewRomanPS-BoldMT", size: size, relativeTo: relativeTo))
+            .lineLimit(1).minimumScaleFactor(0.5)
+            .accessibilityIdentifier("brand-wordmark")
+    }
+}
+
 enum WriteRightTheme {
     static let background = adaptive(0xF8F5EF, 0x161513)
     static let surface = adaptive(0xFFFFFF, 0x24221E)

@@ -5,7 +5,7 @@ final class WritingFlowTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-test-store", UUID().uuidString, "-appearance", "light"]
         app.launch()
-        XCTAssertTrue(app.navigationBars["WriteRight"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["brand-wordmark"].waitForExistence(timeout: 10))
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "WriteRight light home"; attachment.lifetime = .keepAlways
         add(attachment)
@@ -15,6 +15,9 @@ final class WritingFlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["还没有练习"].waitForExistence(timeout: 5))
         app.tabBars.buttons["我的"].tap()
         XCTAssertTrue(app.staticTexts["WriteRight"].waitForExistence(timeout: 5))
+        let profile = XCTAttachment(screenshot: app.screenshot())
+        profile.name = "WriteRight serif profile"; profile.lifetime = .keepAlways
+        add(profile)
     }
 
     func testBrandHomeAndAccessibleDarkLayout() {
