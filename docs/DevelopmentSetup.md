@@ -1,0 +1,111 @@
+# 开发环境与工具协作
+
+基准日期：2026-10-29（Asia/Shanghai）。实际验证结果见 `EnvironmentStatus.md`。
+
+## 工具版本
+
+| 工具 | 基准版本/选择 | 作用 |
+| --- | --- | --- |
+| Node.js | 24.14.1 | 开发工具运行环境；不作为 iOS 运行时 |
+| Supabase CLI | 2.122.0，项目 devDependency | 本地服务、迁移、部署 |
+| Deno | 2.9.6 | 后端检查与测试 |
+| Kimi Code CLI | 2.4.0 | 在 Cursor 终端中使用的编码助手 |
+| XcodeGen | 2.46.0 | 从 `ios/project.yml` 生成工程 |
+| Xcode | 26.3 Apple silicon，兼容本机 macOS 15.6 | SDK、模拟器、构建、签名 |
+| OrbStack | 2.2.5 | 本地 Docker 运行环境 |
+
+Xcode、手机 iOS 与 macOS 版本需匹配；若真实设备系统较新，先核对官方兼容表。
+
+## 新机器准备
+
+1. 从 Apple 官方安装兼容的完整 Xcode，首次启动并安装 iOS 平台组件。
+2. 从官方源安装 Node.js、OrbStack，启动 OrbStack。
+3. 安装 CLI，然后进入项目运行 `npm ci`。
+
+```bash
+npm install --global --prefix "$HOME/.local" @moonshot-ai/kimi-code@2.4.0 deno@2.9.6
+```
+
+用户终端 PATH 需包含 `$HOME/.local/bin`。Supabase 使用项目内锁定版本，不要求全局安装。
+
+XcodeGen 可从官方 2.46.0 release 下载 `xcodegen.zip`，将其中 `xcodegen/bin/xcodegen` 放入项目的 `.tools/bin/xcodegen`；也可用包管理器安装后通过 PATH 使用。
+
+```bash
+npm ci
+npm run env:check
+npm run ios:generate
+npm run ios:build
+```
+
+## Cursor、Codex、Kimi Code
+
+- Cursor 打开整个 `EssayPilot` 目录，Xcode 打开 `ios/EssayPilot.xcodeproj`。
+- 推荐扩展记录于 `.vscode/extensions.json`：官方 Codex、Swift、Deno。
+- Codex 可从桌面应用或 Cursor 扩展使用；同一个任务选用一个写入入口。
+- Kimi Code 在 Cursor 的终端运行 `kimi`；首次使用按提示登录。
+- 三者共用根目录的 `AGENTS.md`。不要复制成三套相互冲突的规则。
+- 聊天历史不自动互通；将任务进度、验证结果和后续工作写入 `docs/progress.md`。
+- 同一 checkout 一次只允许一个 AI 写入。需要并行开发时，创建独立 Git worktree。
+- Swift 扩展依赖完整 Xcode 的 SourceKit 工具链；仅安装扩展不等于可以编译 iOS。
+
+建议任务交接格式：目标、允许修改的目录、接口约束、完成条件、已执行检查、未完成事项。
+
+## 本地后端
+
+```bash
+npm run backend:start
+```
+
+启动脚本创建 `essaypilot-local` Docker 网络，并将服务映射绑定至 `127.0.0.1`。若已有同名网络的绑定不符合要求，脚本会停止并报错。
+
+| 服务 | 地址 |
+| --- | --- |
+| API | http://127.0.0.1:54321 |
+| PostgreSQL | 127.0.0.1:54322 |
+| Studio | http://127.0.0.1:54323 |
+| 本地测试邮件 | http://127.0.0.1:54324 |
+
+本地邮件只进入 Mailpit，不发送到真实邮箱。
+
+```bash
+npm run functions:serve
+curl --fail http://127.0.0.1:54321/functions/v1/health
+```
+
+`health` 是不包含用户数据的公开探针。实际业务接口后续必须分别实现认证、所有权校验与配额限制。
+
+```bash
+npm run check
+npm test
+npm run backend:stop
+```
+
+## 云端与真实 AI
+
+- 本地、云端开发项目、正式私用项目分别配置。
+- `npx supabase login` 使用官方登录流程，凭据由 CLI 管理。
+- 创建或连接开发项目后，用迁移管理数据库；勿把修改仅保留在网页控制台。
+- 真实 DeepSeek Key 只写入 `supabase/.env.local`，再经 CLI 上传为项目 Secrets。
+- 不在聊天、README、Git、构建日志中粘贴密钥；只核验密钥是否存在与请求结果。
+- 正式邮箱 OTP 需要自定义 SMTP 和包含 `{{ .Token }}` 的邮件模板。
+- 在接入实际 AI 前保持 Mock，先用合成数据验证接口和错误恢复。
+- 本仓库暂未实现业务表、RLS、评分队列与真实 AI Provider；基础 health 通过不代表这些功能已完成。
+
+## 真机
+
+在 Xcode 的 Signing & Capabilities 中选择自己的 Team，必要时覆盖开发 Bundle ID，连接 iPhone 并按系统提示完成信任与 Developer Mode。相机、手写 OCR、Keychain、签名和跨设备同步都需真机另行验收。
+
+## 官方来源
+
+- https://developer.apple.com/xcode/system-requirements
+- https://developer.apple.com/download/all/?q=Xcode%2026.3
+- https://learn.chatgpt.com/docs/codex/ide
+- https://learn.chatgpt.com/docs/agent-configuration/agents-md
+- https://cursor.com/docs/rules
+- https://www.kimi.com/code/docs/en/kimi-code-cli/guides/getting-started.html
+- https://docs.deno.com/runtime/getting_started/installation/
+- https://supabase.com/docs/guides/local-development
+- https://supabase.com/docs/guides/functions/development-environment
+- https://supabase.com/docs/guides/auth/auth-smtp
+- https://orbstack.dev/download
+- https://github.com/yonaskolb/XcodeGen/releases/tag/2.46.0

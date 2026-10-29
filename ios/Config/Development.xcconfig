@@ -1,0 +1,3 @@
+// Public development configuration only. Private overrides stay out of Git.
+#include? "Local.xcconfig"
+ESSAYPILOT_ENVIRONMENT = development

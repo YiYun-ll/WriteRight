@@ -1,0 +1,206 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		657D559A680B4CCA20ABC235 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27144391513644A5D0CABE3 /* ContentView.swift */; };
+		FDAAF476AA3FA01FF355A2C4 /* EssayPilotApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC090603A91588ACD9D4F374 /* EssayPilotApp.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		7D8A3FF55AC6340332BEFACF /* Development.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Development.xcconfig; sourceTree = "<group>"; };
+		98E6C4F773C66BA5902A495E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		B27144391513644A5D0CABE3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		E62B1F813522A7CB2AE03F5F /* EssayPilot.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = EssayPilot.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		FC090603A91588ACD9D4F374 /* EssayPilotApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EssayPilotApp.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		08CAEC98D716D1702FB3F7CA /* App */ = {
+			isa = PBXGroup;
+			children = (
+				B27144391513644A5D0CABE3 /* ContentView.swift */,
+				FC090603A91588ACD9D4F374 /* EssayPilotApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		09E8CE3A38D95A6CFA6933B1 /* EssayPilot */ = {
+			isa = PBXGroup;
+			children = (
+				08CAEC98D716D1702FB3F7CA /* App */,
+			);
+			path = EssayPilot;
+			sourceTree = "<group>";
+		};
+		3DBEBA03E6B4C26D25F6CD3E = {
+			isa = PBXGroup;
+			children = (
+				C72A89CCD635B5C7C72C5055 /* Config */,
+				09E8CE3A38D95A6CFA6933B1 /* EssayPilot */,
+				987751BBEECF51F8575B6780 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		987751BBEECF51F8575B6780 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				E62B1F813522A7CB2AE03F5F /* EssayPilot.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		C72A89CCD635B5C7C72C5055 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				7D8A3FF55AC6340332BEFACF /* Development.xcconfig */,
+				98E6C4F773C66BA5902A495E /* Release.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		3B5A22BD31752E6E61F551EB /* EssayPilot */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 188AED90E966B42F3F30D611 /* Build configuration list for PBXNativeTarget "EssayPilot" */;
+			buildPhases = (
+				A0B1A6DE4DFC3BBD7C913223 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = EssayPilot;
+			packageProductDependencies = (
+			);
+			productName = EssayPilot;
+			productReference = E62B1F813522A7CB2AE03F5F /* EssayPilot.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		66BF8B0CC1DA4DA481190AE0 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					3B5A22BD31752E6E61F551EB = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 1E51795F0E107E5971E2D5C0 /* Build configuration list for PBXProject "EssayPilot" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 3DBEBA03E6B4C26D25F6CD3E;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 987751BBEECF51F8575B6780 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				3B5A22BD31752E6E61F551EB /* EssayPilot */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A0B1A6DE4DFC3BBD7C913223 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				657D559A680B4CCA20ABC235 /* ContentView.swift in Sources */,
+				FDAAF476AA3FA01FF355A2C4 /* EssayPilotApp.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		00828350ACADC283DB476A25 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		3D613AF22D3FCBBB9EC39677 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7D8A3FF55AC6340332BEFACF /* Development.xcconfig */;
+			buildSettings = {
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "EssayPilot Dev";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yiyun.essaypilot.dev;
+			};
+			name = Debug;
+		};
+		45219B286C9C5E3E78A574B1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 98E6C4F773C66BA5902A495E /* Release.xcconfig */;
+			buildSettings = {
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = "EssayPilot Dev";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yiyun.essaypilot.dev;
+			};
+			name = Release;
+		};
+		BB21926057FF39704FBCC41B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				SDKROOT = iphoneos;
+				SWIFT_VERSION = 5.9;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		188AED90E966B42F3F30D611 /* Build configuration list for PBXNativeTarget "EssayPilot" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3D613AF22D3FCBBB9EC39677 /* Debug */,
+				45219B286C9C5E3E78A574B1 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		1E51795F0E107E5971E2D5C0 /* Build configuration list for PBXProject "EssayPilot" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BB21926057FF39704FBCC41B /* Debug */,
+				00828350ACADC283DB476A25 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 66BF8B0CC1DA4DA481190AE0 /* Project object */;
+}

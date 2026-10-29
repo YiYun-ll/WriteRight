@@ -1,0 +1,24 @@
+{
+  "name": "essaypilot-dev",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Development tooling for the EssayPilot native iOS app and Supabase backend",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "env:check": "node scripts/check-environment.mjs",
+    "supabase": "supabase",
+    "backend:start": "node scripts/start-backend.mjs",
+    "backend:stop": "supabase stop",
+    "backend:status": "supabase status",
+    "functions:serve": "supabase functions serve",
+    "check": "deno task check",
+    "test": "deno task test",
+    "ios:generate": "./scripts/generate-ios.sh",
+    "ios:build": "./scripts/build-ios.sh"
+  },
+  "devDependencies": {
+    "supabase": "2.122.0"
+  }
+}
