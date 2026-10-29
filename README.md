@@ -26,6 +26,8 @@ npm run backend:start
 npm run functions:serve
 ```
 
+新克隆的工作区需先将 `.env.example` 复制为 `supabase/.env.local`；已有该文件时保留原配置。
+
 本地控制台：`http://127.0.0.1:54323`；本地测试邮件：`http://127.0.0.1:54324`。
 
 iOS 开发：使用完整 Xcode 打开 `ios/EssayPilot.xcodeproj`。修改工程定义后重新生成：
@@ -33,6 +35,7 @@ iOS 开发：使用完整 Xcode 打开 `ios/EssayPilot.xcodeproj`。修改工程
 ```bash
 npm run ios:generate
 npm run ios:build
+npm run ios:run
 ```
 
 ## 目录

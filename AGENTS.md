@@ -2,6 +2,7 @@
 
 ## Project
 - Native iOS 17+ app: SwiftUI, SwiftData, VisionKit/Vision, Supabase, DeepSeek.
+- The user selected `deepseek-flash` for grading and task parsing, with base URL `https://api.deepseek.com`. This overrides the original document's suggested Pro default.
 - Read relevant sections of `EssayPilot_V1_需求分析与系统设计.md` for each task. It is a specification, not evidence that features are implemented.
 - Use Chinese for explanations and task handoffs. Keep code identifiers in English.
 - Keep work scoped to the current task. Do not claim success without running the applicable checks.
@@ -38,7 +39,7 @@
 <claude-mem-context>
 # Memory Context
 
-# [EssayPilot] recent context, 2026-10-29 2:28pm GMT+8
+# [EssayPilot] recent context, 2026-10-29 3:21pm GMT+8
 
 No previous sessions found.
 </claude-mem-context>

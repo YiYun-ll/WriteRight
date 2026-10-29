@@ -1,0 +1,44 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "EssayPilot: 检查开发环境",
+      "type": "shell",
+      "command": "npm run env:check",
+      "problemMatcher": []
+    },
+    {
+      "label": "EssayPilot: Kimi Code",
+      "type": "shell",
+      "command": "kimi",
+      "presentation": { "panel": "dedicated", "focus": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "EssayPilot: 启动本地后端",
+      "type": "shell",
+      "command": "npm run backend:start",
+      "problemMatcher": []
+    },
+    {
+      "label": "EssayPilot: 运行本地函数",
+      "type": "shell",
+      "command": "npm run functions:serve",
+      "presentation": { "panel": "dedicated" },
+      "problemMatcher": []
+    },
+    {
+      "label": "EssayPilot: 构建 iOS",
+      "type": "shell",
+      "command": "npm run ios:build",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "EssayPilot: 在模拟器运行",
+      "type": "shell",
+      "command": "npm run ios:run",
+      "problemMatcher": []
+    }
+  ]
+}

@@ -23,5 +23,17 @@ if (inspection.status !== 0) {
     process.exit(1);
   }
 }
-const result = run(resolve(root, 'node_modules/.bin/supabase'), ['start', '--network-id', network]);
+const result = run(resolve(root, 'node_modules/.bin/supabase'),
+  ['start', '--network-id', network, '--output', 'json'],
+  { stdio: ['inherit', 'pipe', 'inherit'], encoding: 'utf8' });
+if (result.status === 0 && result.stdout.trim()) {
+  try {
+    const services = JSON.parse(result.stdout);
+    for (const key of ['API_URL', 'STUDIO_URL', 'MAILPIT_URL', 'FUNCTIONS_URL']) {
+      if (services[key]) console.log(`${key}: ${services[key]}`);
+    }
+  } catch {
+    console.log('Backend started. Use Supabase Studio to inspect local services.');
+  }
+}
 process.exit(result.status ?? 1);

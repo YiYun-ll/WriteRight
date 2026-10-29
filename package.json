@@ -12,11 +12,12 @@
     "backend:start": "node scripts/start-backend.mjs",
     "backend:stop": "supabase stop",
     "backend:status": "supabase status",
-    "functions:serve": "supabase functions serve",
+    "functions:serve": "supabase functions serve --network-id essaypilot-local --env-file supabase/.env.local",
     "check": "deno task check",
     "test": "deno task test",
     "ios:generate": "./scripts/generate-ios.sh",
-    "ios:build": "./scripts/build-ios.sh"
+    "ios:build": "./scripts/build-ios.sh",
+    "ios:run": "./scripts/run-ios.sh"
   },
   "devDependencies": {
     "supabase": "2.122.0"

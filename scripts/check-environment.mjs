@@ -20,11 +20,21 @@ function check(name, command, args) {
 console.log('EssayPilot environment check (no secret values are printed)');
 check('Git', 'git', ['--version']);
 check('Node.js', 'node', ['--version']);
+check('Codex CLI', 'codex', ['--version']);
+check('Cursor CLI', 'cursor', ['--version']);
 check('Kimi Code CLI', 'kimi', ['--version']);
 check('Deno', 'deno', ['--version']);
 check('Supabase CLI', resolve(root, 'node_modules/.bin/supabase'), ['--version']);
 check('Full Xcode', 'xcodebuild', ['-version']);
 check('iOS simulator SDK', 'xcrun', ['--sdk', 'iphonesimulator', '--show-sdk-version']);
+const simulator = run('xcrun', ['simctl', 'list', 'runtimes', '--json']);
+let hasRuntime = false;
+try {
+  hasRuntime = JSON.parse(simulator.stdout).runtimes.some(runtime =>
+    runtime.isAvailable && runtime.identifier.startsWith('com.apple.CoreSimulator.SimRuntime.iOS-'));
+} catch { /* Missing or unfinished Xcode installation. */ }
+console.log(`${hasRuntime ? 'OK' : 'MISSING'} iOS simulator runtime`);
+if (!hasRuntime) missing++;
 check('Docker runtime', 'docker', ['info', '--format', '{{.ServerVersion}}']);
 const generator = existsSync(resolve(root, '.tools/bin/xcodegen'))
   ? resolve(root, '.tools/bin/xcodegen') : 'xcodegen';
