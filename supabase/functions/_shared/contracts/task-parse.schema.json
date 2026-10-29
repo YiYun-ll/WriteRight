@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TaskParseResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "part",
+    "prompt_type",
+    "genre",
+    "required_points",
+    "chart_facts",
+    "word_requirement",
+    "uncertain_fields"
+  ],
+  "properties": {
+    "part": {
+      "enum": [
+        "A",
+        "B"
+      ]
+    },
+    "prompt_type": {
+      "enum": [
+        "situational",
+        "chart",
+        "picture",
+        "text"
+      ]
+    },
+    "genre": {
+      "type": "string",
+      "minLength": 1
+    },
+    "required_points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "description"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "chart_facts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "label",
+          "period",
+          "value",
+          "unit",
+          "confidence",
+          "confirmed_by_user"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "period": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "value": {
+            "type": "string"
+          },
+          "unit": {
+            "type": "string"
+          },
+          "confidence": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "confirmed_by_user": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "word_requirement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "min",
+        "max",
+        "source"
+      ],
+      "properties": {
+        "target": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "min": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "max": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "source": {
+          "enum": [
+            "question",
+            "default_guideline"
+          ]
+        }
+      }
+    },
+    "uncertain_fields": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  }
+}

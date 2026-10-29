@@ -22,11 +22,32 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.yiyun.essaypilot.dev
         GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: EssayPilot Dev
+        INFOPLIST_KEY_CFBundleDisplayName: WriteRight
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
+  EssayPilotTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: EssayPilotTests
+    dependencies:
+      - target: EssayPilot
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+  EssayPilotUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: EssayPilotUITests
+    dependencies:
+      - target: EssayPilot
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
 schemes:
   EssayPilot:
     build:
@@ -34,3 +55,8 @@ schemes:
         EssayPilot: all
     run:
       config: Debug
+    test:
+      config: Debug
+      targets:
+        - EssayPilotTests
+        - EssayPilotUITests
