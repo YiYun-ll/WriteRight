@@ -1,0 +1,3 @@
+// Real release credentials and signing must be configured before distribution.
+#include? "Local.xcconfig"
+ESSAYPILOT_ENVIRONMENT = production

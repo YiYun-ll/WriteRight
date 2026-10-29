@@ -1,0 +1,39 @@
+# Dependencies and generated output
+node_modules/
+.tools/
+.cache/
+.setup/
+DerivedData/
+build/
+.DS_Store
+*.log
+
+# Secrets and signing material
+.env
+.env.*
+!.env.example
+!**/.env.example
+*.p12
+*.p8
+*.mobileprovision
+*.provisionprofile
+*.key
+*.pem
+ios/Config/Local.xcconfig
+
+# Editor and agent local state
+*.xcuserstate
+xcuserdata/
+.kimi/
+.kimi-code/
+.cursor/mcp.json
+.codex/
+
+# Supabase generated state
+supabase/.branches/
+supabase/.temp/
+supabase/.env.local
+
+# Local test data and artifacts
+tests/private/
+artifacts/

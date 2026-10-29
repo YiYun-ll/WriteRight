@@ -1,0 +1,2 @@
+-- Synthetic development fixtures will be added with the product schema.
+-- Never place private essays, real email addresses, or API keys in this file.
