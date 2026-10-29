@@ -9,6 +9,9 @@ struct HomeView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
+                BrandWordmark()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityAddTraits(.isHeader)
                 LazyVGrid(columns: columns, spacing: 14) {
                     ForEach(WritingPart.allCases) { part in
                         PartEntry(part: part) { onCreate(part, nil) }
@@ -36,7 +39,8 @@ struct HomeView: View {
         }
         .background(WriteRightTheme.background)
         .foregroundStyle(WriteRightTheme.ink)
-        .navigationTitle("WriteRight")
+        .navigationTitle("")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {

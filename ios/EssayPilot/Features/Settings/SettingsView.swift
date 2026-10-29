@@ -12,7 +12,7 @@ struct SettingsView: View {
                     Image("BrandMark").resizable().scaledToFit().frame(width: 64, height: 64)
                         .clipShape(RoundedRectangle(cornerRadius: 16)).accessibilityHidden(true)
                     VStack(alignment: .leading, spacing: 5) {
-                        Text("WriteRight").font(.title2.weight(.semibold))
+                        BrandWordmark(size: 26, relativeTo: .title2)
                         Text("版本 \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0")")
                             .font(.footnote).foregroundStyle(WriteRightTheme.secondary)
                     }

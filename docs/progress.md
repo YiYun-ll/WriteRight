@@ -43,3 +43,13 @@
 - 图标主图：`design/brand/writeright-icon-master.png`；原始提示词与内置生成方式见 `design/brand/icon-prompt.md`。
 - 实际界面：`design/previews/home-light.png`、`home-dark-accessibility.png`、`editor.png`。编辑页使用合成 XCTest 文本，没有真实作文。
 - 设计约束见 `DesignSystem.md`：用间距、字体、位置与容器表达层级；保留短功能标签，去掉宣传副标题和技术徽章；错误、隐私、AI 不确定性仍须清楚。
+
+## 品牌选定与替换（2026-10-29）
+
+用户从四款候选中选择 A「一笔写对」，要求 WriteRight 字标采用 Times New Roman 风格，并明确同意直接替换。
+
+- 已替换 AppIcon（1024×1024，不含 alpha）与应用内 BrandMark；旧纸页母图归档在 `design/brand/archive/`。
+- 首页与“我的”使用 `BrandWordmark`，以 `TimesNewRomanPS-BoldMT` 原生渲染，语义颜色适应深浅色，支持动态字号及无障碍名称。
+- 保存确认稿 `design/brand/writeright-identity-a-serif.png` 和透明横版 Logo `writeright-logo-horizontal.png`。内置 image_gen 的实际提示词见 `design/brand/icon-prompt.md` 及 `concepts-20261029/`。
+- 替换后的工程构建成功；两项界面回归通过，包括浅色首页、我的页、深色大字号和导航。结果：`artifacts/ios-tests-20261029-164740.xcresult`。
+- 更新实际截图：`design/previews/home-light.png`、`home-dark-accessibility.png`、`profile.png`。此次为品牌更新，产品阶段仍位于 P4 开始前。
