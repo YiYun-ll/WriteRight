@@ -6,7 +6,7 @@
 
 | 项目 | 结果 |
 | --- | --- |
-| GitHub | `YiYun-ll/EssayPilot`，已确认 private，默认分支 main |
+| GitHub | `YiYun-ll/WriteRight`，已确认 private，默认分支 main |
 | 初始提交 | 已推送到私有仓库 |
 | GitHub CI | Backend checks 首次执行成功 |
 | Supabase 登录 | CLI 已登录，已实际读取组织与项目 |
@@ -17,11 +17,11 @@
 | DeepSeek | 认证 HTTP 200，模型列表确认 `deepseek-flash` 可用 |
 | 服务端配置 | DeepSeek Key、Base URL、评分/解析模型与 AI Provider 已写入开发项目 Secrets |
 
-仓库：https://github.com/YiYun-ll/EssayPilot
+仓库：https://github.com/YiYun-ll/WriteRight
 
 开发项目：https://supabase.com/dashboard/project/tdcxdiqvrfmppaqikgxu
 
-首次 CI：https://github.com/YiYun-ll/EssayPilot/actions/runs/40830394232
+首次 CI：https://github.com/YiYun-ll/WriteRight/actions/runs/40830394232
 
 ## 本机工具
 

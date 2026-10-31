@@ -5,6 +5,7 @@ final class AccountFlowTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-test-store", UUID().uuidString, "-appearance", "light"]
         app.launch()
+        app.tabBars.buttons["练习"].tap()
         XCTAssertTrue(app.buttons["new-part-A"].waitForExistence(timeout: 10))
         app.buttons["new-part-A"].tap()
         let title = app.textFields["task-title"]
@@ -28,16 +29,16 @@ final class AccountFlowTests: XCTestCase {
 
         XCTAssertTrue(app.buttons["migrate-guest-drafts"].waitForExistence(timeout: 5))
         app.buttons["migrate-guest-drafts"].tap()
-        app.tabBars.buttons["首页"].tap()
+        app.tabBars.buttons["练习"].tap()
         XCTAssertTrue(app.staticTexts["本机草稿"].waitForExistence(timeout: 5))
 
         app.tabBars.buttons["我的"].tap()
-        app.staticTexts["a@example.com"].tap()
+        app.buttons["account-link"].tap()
         XCTAssertTrue(app.buttons["退出登录"].waitForExistence(timeout: 5))
         app.buttons["退出登录"].tap()
         app.sheets.buttons["退出登录"].tap()
         XCTAssertTrue(app.buttons["login-link"].waitForExistence(timeout: 5))
-        app.tabBars.buttons["首页"].tap()
-        XCTAssertFalse(app.staticTexts["本机草稿"].exists)
+        app.tabBars.buttons["练习"].tap()
+        XCTAssertFalse(app.staticTexts["本机草稿"].waitForExistence(timeout: 2))
     }
 }

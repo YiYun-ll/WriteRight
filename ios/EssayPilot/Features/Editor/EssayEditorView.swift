@@ -3,12 +3,16 @@ import SwiftUI
 struct EssayEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
+    @EnvironmentObject private var appModel: AppModel
     @StateObject private var model: EssayEditorModel
     @State private var topicExpanded: Bool
+    @State private var isSubmitting = false
+    private let onPhotos: () -> Void
     private enum Field: Hashable { case title, prompt, requirements, body }
     @FocusState private var focusedField: Field?
 
-    init(document: DraftDocument, repository: any WritingRepository, didSave: @escaping () -> Void) {
+    init(document: DraftDocument, repository: any WritingRepository, didSave: @escaping () -> Void, onPhotos: @escaping () -> Void = {}) {
+        self.onPhotos = onPhotos
         _model = StateObject(wrappedValue: EssayEditorModel(document: document, repository: repository, didSave: didSave))
         _topicExpanded = State(initialValue: document.task.prompt.isEmpty)
     }
@@ -22,10 +26,18 @@ struct EssayEditorView: View {
                         HStack(alignment: .firstTextBaseline) {
                             Text("正文").font(.title3.weight(.semibold))
                             Spacer()
+                            if ["ocr", "ai_photo"].contains(model.document.source) {
+                                Text(model.document.source == "ai_photo" ? "AI 读图核对稿" : "历史转录").font(.caption).foregroundStyle(WriteRightTheme.secondary)
+                            }
                             Text("参考词数 \(model.wordCount)")
                                 .font(.caption.monospacedDigit()).foregroundStyle(WriteRightTheme.secondary)
                                 .accessibilityHint("缩略词、连字符词和数字分别计为一个词，仅供参考")
                                 .accessibilityIdentifier("word-count")
+                        }
+                        if model.body.isEmpty {
+                            Button("导入作文照片", systemImage: "photo") { openPhotos() }
+                                .font(.subheadline).frame(minHeight: 44)
+                                .accessibilityIdentifier("import-essay-photo")
                         }
                         ZStack(alignment: .topLeading) {
                             if model.body.isEmpty {
@@ -33,6 +45,7 @@ struct EssayEditorView: View {
                                     .padding(.top, 8).padding(.leading, 5).allowsHitTesting(false)
                             }
                             TextEditor(text: $model.body)
+                                .autocorrectionDisabled()
                                 .font(.system(.body, design: .serif)).lineSpacing(7)
                                 .scrollContentBackground(.hidden).focused($focusedField, equals: .body)
                                 .frame(minHeight: 350).accessibilityLabel("作文正文")
@@ -59,20 +72,64 @@ struct EssayEditorView: View {
                     Button("完成") { if model.save() { dismiss() } }
                         .fontWeight(.semibold).accessibilityIdentifier("finish-editing")
                 }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("用照片新建批改", systemImage: "camera") { openPhotos() }
+                        .accessibilityIdentifier("open-scan")
+                }
             }
             .safeAreaInset(edge: .bottom) {
-                if let error = model.saveError {
-                    HStack {
-                        Text(error).font(.footnote)
-                        Spacer()
-                        Button("重试") { model.save() }
-                    }.foregroundStyle(.red).padding().background(WriteRightTheme.surface)
+                VStack(spacing: 12) {
+                    if let error = model.saveError {
+                        HStack {
+                            Text(error).font(.footnote)
+                            Spacer()
+                            Button("重试") { model.save() }
+                        }.foregroundStyle(.red)
+                    }
+                    if let reason = submitBlockedReason {
+                        Text(reason).font(.footnote).foregroundStyle(.red).frame(maxWidth: .infinity, alignment: .leading)
+                            .accessibilityIdentifier("submit-blocked")
+                    } else if !model.taskConfirmed && appModel.canGrade {
+                        Text("题目未确认时不估总分。").font(.footnote).foregroundStyle(WriteRightTheme.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    if appModel.canGrade {
+                        Button {
+                            guard model.save() else { return }
+                            isSubmitting = true
+                            Task {
+                                let job = await appModel.submitGrading(model.document)
+                                isSubmitting = false
+                                if job != nil { dismiss() }
+                            }
+                        } label: {
+                            Group {
+                                if isSubmitting { ProgressView().tint(.white) }
+                                else { Text("提交批改") }
+                            }.frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(MainActionStyle())
+                        .disabled(isSubmitting || submitBlockedReason != nil || model.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        .accessibilityIdentifier("submit-grading")
+                    }
                 }
+                .padding().background(WriteRightTheme.background)
             }
         }
         .onChange(of: scenePhase) { _, phase in if phase != .active { model.save() } }
         .onDisappear { model.finishEditing() }
         .interactiveDismissDisabled(model.saveError != nil)
+    }
+
+    private var submitBlockedReason: String? {
+        if OCRTranscript.containsUnresolved(model.body) { return "请先替换待确认的识别文字。" }
+        if ["ocr", "ai_photo"].contains(model.document.source) && !model.document.transcriptionConfirmed { return "请先完成转录核对。" }
+        return nil
+    }
+
+    private func openPhotos() {
+        focusedField = nil
+        if model.save() { onPhotos() }
     }
 
     private var topicSection: some View {

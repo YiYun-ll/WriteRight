@@ -41,5 +41,13 @@ struct HistoryView: View {
             }
         }.frame(maxWidth: .infinity, maxHeight: .infinity).background(WriteRightTheme.background)
             .foregroundStyle(WriteRightTheme.ink).navigationTitle("历史")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink("成绩") { PracticeStatsView() }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink("对比") { TaskCompareView() }
+                }
+            }
     }
 }

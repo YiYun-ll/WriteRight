@@ -91,4 +91,5 @@ private actor TestAuthService: AuthService {
     }
     func updateEmail(_ email: String) async throws {}
     func signOut() async throws { session = nil }
+    func deleteAccount() async throws { session = nil }
 }

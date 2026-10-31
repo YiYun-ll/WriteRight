@@ -11,7 +11,7 @@
 | Deno | 2.9.6 | 后端检查与测试 |
 | Kimi Code CLI | 2.4.0 | 在 Cursor 终端中使用的编码助手 |
 | XcodeGen | 2.46.0 | 从 `ios/project.yml` 生成工程 |
-| Xcode | 26.3 Apple silicon，兼容本机 macOS 15.6 | SDK、模拟器、构建、签名 |
+| Xcode | 27.2（27B52），本机 macOS 27.2；2026-10-30 实测 | SDK、模拟器、构建、签名 |
 | OrbStack | 2.2.5 | 本地 Docker 运行环境 |
 
 Xcode、手机 iOS 与 macOS 版本需匹配；若真实设备系统较新，先核对官方兼容表。
@@ -94,11 +94,15 @@ npm run backend:stop
 - 不在聊天、README、Git、构建日志中粘贴密钥；只核验密钥是否存在与请求结果。
 - 正式邮箱 OTP 需要自定义 SMTP 和包含 `{{ .Token }}` 的邮件模板。
 - 在接入实际 AI 前保持 Mock，先用合成数据验证接口和错误恢复。
-- 本仓库暂未实现业务表、RLS、评分队列与真实 AI Provider；基础 health 通过不代表这些功能已完成。
+- 当前业务表、RLS、持久队列、真实 AI Provider 和开发云已接入；仍需分别运行数据库与真实云验收。health只证明静态函数存活，不代表邮件/队列/模型都正常。新记录与学习反馈的迁移/部署见NotebookAndLearning.md。
 
 ## 真机
 
 在 Xcode 的 Signing & Capabilities 中选择自己的 Team，必要时覆盖开发 Bundle ID，连接 iPhone 并按系统提示完成信任与 Developer Mode。相机、手写 OCR、Keychain、签名和跨设备同步都需真机另行验收。
+
+2026-10-30 已安装官方 Xcode 27.2 至 `/Applications/Xcode.app`，首次组件配置通过，默认 CLI SDK 为 27.2。旧 Xcode 26.3 已移至用户废纸篓，未清空。现有项目通过新版模拟器构建、真机无签名构建和真机签名构建，并已实际安装、启动在 iOS 27.2 的 iPhone 上。Personal Team 配置只保存在 ignored `ios/Config/Local.xcconfig`，证书和私钥在本机钥匙串。
+
+当前真机安装包的 Supabase 地址与公开 key 未配置；本地写作、系统相册和 Vision 可以使用，联网登录/AI 批改不能据此宣称通过。模拟器前轮真实后端验收使用 DEBUG 环境覆盖，不自动适用于这个真机安装包。连接手机可访问的测试后端仍是后续独立配置项；不要将模拟器 localhost 地址直接填入手机。
 
 ## 官方来源
 
@@ -114,3 +118,9 @@ npm run backend:stop
 - https://supabase.com/docs/guides/auth/auth-smtp
 - https://orbstack.dev/download
 - https://github.com/yonaskolb/XcodeGen/releases/tag/2.46.0
+
+## 2026-10-30 本地调度与扫描检查
+
+本地函数服务运行时执行 `npm run backend:worker:configure`，补齐已有 cron 的本地加密 Vault 配置。详见 [LocalWorker.md](LocalWorker.md)。`npm run test:worker-schedule` 是显式真实模型合成测试，不访问生产。
+
+`npm run test:ocr-layout` 现执行 12 项共享 Foundation/ImageIO XCTest，覆盖忠实排版、UTF-16 区间、上传预算与透明白底。它不依赖 simulator deviceservice，不可代替完整 iOS UI 套件通过声明。

@@ -23,6 +23,10 @@ struct WritingTaskDocument: Codable, Identifiable, Equatable {
     var requirements: [TaskRequirement]
     var revision: Int
     var confirmedAt: Date?
+    var chartFacts: [ChartFactDocument]? = nil
+    var sourcePages: [ScanPageDocument]? = nil
+    var uncertainFields: [String]? = nil
+    var photoFingerprint: String? = nil
 
     static func empty(part: WritingPart) -> Self {
         .init(id: UUID(), part: part, title: "", prompt: "", requirements: [], revision: 1)
@@ -33,7 +37,7 @@ struct WritingTaskDocument: Codable, Identifiable, Equatable {
         let line = prompt.split(whereSeparator: \.isNewline).first.map(String.init) ?? ""
         return line.isEmpty ? "\(part.title)练习" : String(line.prefix(42))
     }
-    var isConfirmed: Bool { confirmedAt != nil && !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    var isConfirmed: Bool { confirmedAt != nil && !prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && (chartFacts?.allSatisfy(\.confirmedByUser) ?? true) && (uncertainFields?.isEmpty ?? true) }
 }
 
 struct DraftDocument: Codable, Identifiable, Equatable {
@@ -44,10 +48,12 @@ struct DraftDocument: Codable, Identifiable, Equatable {
     var transcriptionConfirmed: Bool
     var createdAt: Date
     var updatedAt: Date
+    var pages: [ScanPageDocument]? = nil
+    var conflictOf: UUID? = nil
 
     var wordCount: Int { WordCounter.count(body) }
     var isEmpty: Bool {
-        body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        (pages?.isEmpty ?? true) && (task.sourcePages?.isEmpty ?? true) && body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         task.prompt.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
         task.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && task.requirements.isEmpty
     }
@@ -70,6 +76,7 @@ struct SubmissionDocument: Codable, Identifiable, Equatable {
     let contentHash: String
     let sentences: [SentenceSpan]
     let submittedAt: Date
+    var essayPages: [ScanPageDocument]? = nil
 }
 
 @MainActor
@@ -79,5 +86,47 @@ protocol WritingRepository: AnyObject {
     func save(_ draft: DraftDocument) throws
     func saveSubmission(_ submission: SubmissionDocument) throws
     func deleteDraft(id: UUID) throws
+    func gradingJobs() throws -> [GradingJobDocument]
+    func gradingReports() throws -> [GradingReportDocument]
+    func saveGradingJob(_ job: GradingJobDocument) throws
+    func saveGradingReport(_ report: GradingReportDocument) throws
     func exportData() throws -> Data
+    func notebookChanges() throws -> [NotebookChange]
+    func saveNotebook(_ entry: NotebookEntry) throws
+    func acknowledgeNotebook(_ entry: NotebookEntry, revision: Int64, deleted: Bool) throws
+    func applyNotebook(_ entry: NotebookEntry, revision: Int64) throws
+    func notebookCursor() throws -> Int64
+    func setNotebookCursor(_ cursor: Int64) throws
+    func draftChanges() throws -> [DraftChange]
+    func acknowledgeDraft(id: UUID, revision: Int64, deleted: Bool) throws
+    func applyRemoteDraft(_ draft: DraftDocument, revision: Int64) throws
+    func syncCursor() throws -> Int64
+    func setSyncCursor(_ cursor: Int64) throws
+    func favoriteChanges() throws -> [FavoriteChange]
+    func acknowledgeFavorite(id: UUID, revision: Int64, deleted: Bool) throws
+    func applyRemoteFavorite(_ favorite: FavoriteDocument, revision: Int64) throws
+    func keepFavorite(_ favorite: FavoriteDocument) throws
+    func deleteFavorite(id: UUID) throws
+    func favorites() throws -> [FavoriteDocument]
+}
+
+extension WritingRepository {
+    func notebookChanges() throws -> [NotebookChange] { [] }
+    func saveNotebook(_ entry: NotebookEntry) throws { throw LocalStoreError.unavailable }
+    func acknowledgeNotebook(_ entry: NotebookEntry, revision: Int64, deleted: Bool) throws {}
+    func applyNotebook(_ entry: NotebookEntry, revision: Int64) throws {}
+    func notebookCursor() throws -> Int64 { 0 }
+    func setNotebookCursor(_ cursor: Int64) throws {}
+
+    func draftChanges() throws -> [DraftChange] { [] }
+    func acknowledgeDraft(id: UUID, revision: Int64, deleted: Bool) throws {}
+    func applyRemoteDraft(_ draft: DraftDocument, revision: Int64) throws {}
+    func syncCursor() throws -> Int64 { 0 }
+    func setSyncCursor(_ cursor: Int64) throws {}
+    func favoriteChanges() throws -> [FavoriteChange] { [] }
+    func acknowledgeFavorite(id: UUID, revision: Int64, deleted: Bool) throws {}
+    func applyRemoteFavorite(_ favorite: FavoriteDocument, revision: Int64) throws {}
+    func keepFavorite(_ favorite: FavoriteDocument) throws {}
+    func deleteFavorite(id: UUID) throws {}
+    func favorites() throws -> [FavoriteDocument] { [] }
 }

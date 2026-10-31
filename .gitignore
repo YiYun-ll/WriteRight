@@ -4,6 +4,7 @@ node_modules/
 .cache/
 .setup/
 DerivedData/
+DerivedData-device/
 build/
 .DS_Store
 *.log

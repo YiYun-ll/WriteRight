@@ -1,3 +1,9 @@
+import { buildV14Prompt } from "./prompt-v1-4.ts";
+import { SENTENCE_REVIEW_PROMPT, sentenceReviewTargets } from "./sentence-review.ts";
+import { buildV13Prompt } from "./prompt-v1-3.ts";
+import { DEVELOPMENT_PROMPT } from "./development.ts";
+import { buildLegacyPrompt } from "./legacy-prompt.ts";
+import { CALIBRATED_SCORING, REWRITE_STUDY_PROMPT } from "./calibration.ts";
 import schema from "../contracts/report.schema.json" with { type: "json" };
 import type { CompletionRequest, GradingContext } from "./types.ts";
 
@@ -33,14 +39,57 @@ export function buildPrompt(
   context: GradingContext,
   repairCodes: string[] = [],
 ): CompletionRequest {
+  if (context.promptVersion === "WRITERIGHT_GRADING_V1_4") {
+    return buildV14Prompt(context, repairCodes);
+  }
+  if (context.promptVersion === "WRITERIGHT_GRADING_V1_3") {
+    return buildV13Prompt(context, repairCodes);
+  }
+  if (context.promptVersion === "WRITERIGHT_GRADING_V1_2") {
+    return buildLegacyPrompt(context, repairCodes);
+  }
+  const currentSchema = structuredClone(schema);
+  const modelSchema = {
+    ...currentSchema,
+    properties: {
+      ...currentSchema.properties,
+      rewrite_study: currentSchema.properties.rewrites.properties.study,
+    },
+    required: [
+      ...currentSchema.required,
+      "rewrite_study",
+      "advanced_advice",
+      "model_essay",
+      "sentence_reviews",
+    ],
+  };
+  // Task IDs are supplied by the program. Empty requirements must stay empty.
+  if (context.task.requirements.length === 0) {
+    Object.assign(modelSchema.properties.task_checks, { maxItems: 0 });
+  } else {
+    Object.assign(modelSchema.properties.task_checks.items.properties.point_id, {
+      enum: context.task.requirements.map((point) => point.id),
+    });
+  }
+  const { study: _study, ...englishProperties } = currentSchema.properties.rewrites.properties;
+  modelSchema.properties.rewrites = {
+    ...currentSchema.properties.rewrites,
+    properties: englishProperties,
+  } as typeof currentSchema.properties.rewrites;
   return {
-    system: shared + rubrics[context.part] + "\nJSON Schema:\n" + JSON.stringify(schema) +
+    maxOutputTokens: 14000,
+    system: shared +
+      "\n当requirements为空时，task_checks必须为空数组，即使题面包含要求，也不能自造point_id；相关任务观察写入dimensions。\n" +
+      rubrics[context.part] + "\n" + CALIBRATED_SCORING + "\n" +
+      REWRITE_STUDY_PROMPT + "\n" + DEVELOPMENT_PROMPT + "\n" + SENTENCE_REVIEW_PROMPT +
+      "\nJSON Schema:\n" +
+      JSON.stringify(modelSchema) +
       (repairCodes.length
         ? `\n前一次校验未通过（仅错误码）：${repairCodes.join(",")}。重新完整分析并修正。`
         : ""),
     user: JSON.stringify({
       metadata: {
-        schema_version: "1.0.0",
+        schema_version: "1.3.0",
         part: context.part,
         grading_mode: context.mode,
         word_count: context.wordCount,
@@ -51,6 +100,7 @@ export function buildPrompt(
       task: context.task,
       original_text: context.originalText,
       sentences: context.sentences,
+      sentence_review_targets: sentenceReviewTargets(context.sentences),
     }),
   };
 }

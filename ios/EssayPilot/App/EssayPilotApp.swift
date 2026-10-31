@@ -11,6 +11,9 @@ struct EssayPilotApp: App {
                 .environmentObject(model)
                 .tint(WriteRightTheme.accent)
                 .preferredColorScheme(appearance == "dark" ? .dark : appearance == "light" ? .light : nil)
+                #if DEBUG
+                .task { await BackendConnectivityProbe.runIfRequested() }
+                #endif
         }
     }
 }

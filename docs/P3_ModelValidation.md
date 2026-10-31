@@ -65,3 +65,11 @@ npm run poc:grading -- --sample=B-static-facts --output=artifacts/grading-poc-ta
 完整合成输出在本机忽略目录 `artifacts/grading-poc-initial.json` / `artifacts/grading-poc-refined.json`。本文件只保留可审查的摘要；没有把这些结果标作人工 Golden Set。
 
 API 依据：DeepSeek 官方 [Chat Completion](https://api-docs.deepseek.com/api/create-chat-completion/) 与 [JSON Output](https://api-docs.deepseek.com/guides/json_mode/)，核对日期 2026-10-29。
+
+## 2026-10-30：源文换行与句子证据
+
+评分上下文版本升为 `WRITERIGHT_GRADING_V1_2`（A/B Rubric 不变）。后端和原生端都以空行为段落边界，在等长的空白影子文本上分句，再从原文取精确 UTF-16 区间。单行物理换行不再把 I has / prepared 拆成两条证据，保留原稿字节、错词、CRLF、Emoji、重复句和小数。旧提交与旧报告不迁移、不重写，服务端保存的 source_sentences 仍是报告权威区间。
+
+新增两项后端回归和两项可在 macOS 执行的共享原生回归。后端共 41 项通过；`npm run test:ocr-layout` 共 6 项真实 XCTest 通过（4 项 OCR 排版与候选安全、2 项源文分句）。原生完整 UI XCTest 仍被 deviceservice 挡住，两者不混称。
+
+真实本地模型复验得到 V1_2 报告，10 条完整句证据、8/10，完整指出 I has prepared 的主谓一致问题；报告与原稿区间保存后再次读取核对通过。此结果不建立人工评分准确率。

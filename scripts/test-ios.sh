@@ -16,5 +16,5 @@ xcodebuild test \
   -derivedDataPath "$task_root/DerivedData" \
   -resultBundlePath "$task_result" \
   -parallel-testing-enabled NO \
-  CODE_SIGNING_ALLOWED=NO \
+  CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
   "$@"

@@ -1,0 +1,15 @@
+begin;
+select plan(5);
+insert into auth.users(id,email) values('33333333-3333-4333-8333-333333333333','nickname-a@example.com'),('44444444-4444-4444-8444-444444444444','nickname-b@example.com');
+set local role authenticated;
+select set_config('request.jwt.claims','{"sub":"33333333-3333-4333-8333-333333333333","role":"authenticated"}',true);
+select lives_ok($$update public.profiles set nickname='晨光' where id='33333333-3333-4333-8333-333333333333'$$,'owner can set nickname');
+select is((select nickname from public.profiles where id='33333333-3333-4333-8333-333333333333'),'晨光','nickname persists');
+select set_config('request.jwt.claims','{"sub":"44444444-4444-4444-8444-444444444444","role":"authenticated"}',true);
+select is((select count(*)::integer from public.profiles where id='33333333-3333-4333-8333-333333333333'),0,'other account cannot read nickname');
+update public.profiles set nickname='forged' where id='33333333-3333-4333-8333-333333333333';
+reset role;
+select is((select nickname from public.profiles where id='33333333-3333-4333-8333-333333333333'),'晨光','other account cannot overwrite nickname');
+select throws_ok($$update public.profiles set nickname=repeat('x',81) where id='33333333-3333-4333-8333-333333333333'$$,'23514',null,'database length boundary retained');
+select * from finish();
+rollback;

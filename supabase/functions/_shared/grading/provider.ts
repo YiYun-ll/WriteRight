@@ -33,12 +33,17 @@ export class DeepSeekAdapter implements ModelAdapter {
           model: this.config.model,
           messages: [{ role: "system", content: input.system }, {
             role: "user",
-            content: input.user,
+            content: input.images?.length
+              ? [
+                { type: "text", text: input.user },
+                ...input.images.map((url) => ({ type: "image_url", image_url: { url } })),
+              ]
+              : input.user,
           }],
           response_format: { type: "json_object" },
           thinking: { type: "disabled" },
           stream: false,
-          max_tokens: 6500,
+          max_tokens: input.maxOutputTokens ?? 6500,
         }),
         signal: AbortSignal.timeout(this.config.timeoutMs ?? 45_000),
       });
