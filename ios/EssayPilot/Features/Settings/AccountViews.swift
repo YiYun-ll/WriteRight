@@ -59,7 +59,7 @@ struct LoginView: View {
                 }
 
                 if let error = model.authErrorMessage {
-                    Text(error).font(.footnote).foregroundStyle(.red)
+                    Text(error).font(.footnote).foregroundStyle(.red).textSelection(.enabled)
                         .accessibilityIdentifier("auth-error")
                 }
             }
@@ -91,10 +91,12 @@ struct AccountView: View {
     @State private var newEmail = ""
     @State private var confirmationSent = false
     @State private var confirmingSignOut = false
+    @State private var confirmingDelete = false
 
     var body: some View {
         List {
             Section {
+                NavigationLink { NicknameEditorView() } label: { LabeledContent("昵称", value: model.nickname ?? "未设置") }
                 LabeledContent("邮箱", value: model.account?.email ?? "")
                     .lineLimit(1).truncationMode(.middle)
             }
@@ -114,6 +116,8 @@ struct AccountView: View {
             }
             Section {
                 Button("退出登录", role: .destructive) { confirmingSignOut = true }
+                Button("删除账号", role: .destructive) { confirmingDelete = true }
+                    .accessibilityIdentifier("delete-account")
             }
         }
         .listStyle(.insetGrouped).scrollContentBackground(.hidden)
@@ -122,6 +126,9 @@ struct AccountView: View {
         .onChange(of: model.account) { _, account in if account == nil { dismiss() } }
         .confirmationDialog("退出当前账号？", isPresented: $confirmingSignOut, titleVisibility: .visible) {
             Button("退出登录", role: .destructive) { Task { await model.signOut() } }
+        }
+        .confirmationDialog("删除账号后，云端和本机的练习、报告与收藏都会清除。", isPresented: $confirmingDelete, titleVisibility: .visible) {
+            Button("删除账号", role: .destructive) { Task { await model.deleteAccount() } }
         }
         .alert("账号", isPresented: Binding(
             get: { model.authErrorMessage != nil },

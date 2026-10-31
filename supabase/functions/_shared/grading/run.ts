@@ -49,8 +49,25 @@ export async function runGrading(
         throw new ReportValidationError(["JSON"]);
       }
       if (typeof parsed === "object" && parsed !== null && !Array.isArray(parsed)) {
+        if (
+          ["WRITERIGHT_GRADING_V1_3", "WRITERIGHT_GRADING_V1_4", "WRITERIGHT_GRADING_V1_5"]
+            .includes(context.promptVersion)
+        ) {
+          const object = parsed as Record<string, unknown>;
+          if (object.rewrite_study && object.rewrites && typeof object.rewrites === "object") {
+            (object.rewrites as Record<string, unknown>).study = object.rewrite_study;
+            delete object.rewrite_study;
+          }
+        }
         // Program-owned fields never trust the model's word count, configuration, or identity.
         Object.assign(parsed, {
+          schema_version: context.promptVersion === "WRITERIGHT_GRADING_V1_5"
+            ? "1.3.0"
+            : context.promptVersion === "WRITERIGHT_GRADING_V1_4"
+            ? "1.2.0"
+            : context.promptVersion === "WRITERIGHT_GRADING_V1_3"
+            ? "1.1.0"
+            : "1.0.0",
           word_count: context.wordCount,
           model_id: context.modelID,
           rubric_version: context.rubricVersion,

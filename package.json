@@ -20,7 +20,11 @@
     "ios:build": "./scripts/build-ios.sh",
     "ios:run": "./scripts/run-ios.sh",
     "test:ios": "./scripts/test-ios.sh",
-    "poc:grading": "deno run --env-file=supabase/.env.local --allow-env=DEEPSEEK_API_KEY,DEEPSEEK_BASE_URL,DEFAULT_GRADING_MODEL --allow-net=api.deepseek.com,127.0.0.1:7890 --allow-write=artifacts scripts/poc-grading.ts --live"
+    "test:grading": "node scripts/test-grading-integration.mjs --live",
+    "poc:grading": "deno run --env-file=supabase/.env.local --allow-env=DEEPSEEK_API_KEY,DEEPSEEK_BASE_URL,DEFAULT_GRADING_MODEL --allow-net=api.deepseek.com,127.0.0.1:7890 --allow-write=artifacts scripts/poc-grading.ts --live",
+    "test:ocr-layout": "./scripts/test-ocr-layout.sh",
+    "backend:worker:configure": "node scripts/configure-local-worker.mjs",
+    "test:worker-schedule": "node scripts/test-local-worker-schedule.mjs --live"
   },
   "devDependencies": {
     "supabase": "2.122.0"

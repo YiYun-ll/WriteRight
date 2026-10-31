@@ -12,7 +12,15 @@ protocol AuthService: Sendable {
     func requestCode(email: String) async throws
     func verifyCode(email: String, code: String) async throws -> AccountSession
     func updateEmail(_ email: String) async throws
+    func profileNickname(userID: UUID) async throws -> String?
+    func updateNickname(_ nickname: String, userID: UUID) async throws -> String?
     func signOut() async throws
+    func deleteAccount() async throws
+}
+
+extension AuthService {
+    func profileNickname(userID: UUID) async throws -> String? { nil }
+    func updateNickname(_ nickname: String, userID: UUID) async throws -> String? { throw AuthServiceError.invalidSession }
 }
 
 enum AuthServiceError: Error {
@@ -20,19 +28,39 @@ enum AuthServiceError: Error {
     case invalidTestCode
 }
 
+/// Local simulator acceptance overrides are compiled out of release builds.
+enum BackendConfiguration {
+    static func value(_ key: String, bundle: Bundle) -> String? {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-ui-test-live"),
+           let value = ProcessInfo.processInfo.environment["WRITERIGHT_" + key], !value.isEmpty {
+            return value
+        }
+        #endif
+        return bundle.object(forInfoDictionaryKey: key) as? String
+    }
+}
+
 struct SupabaseAuthService: AuthService {
-    private let client: SupabaseClient
+    let client: SupabaseClient
 
     init?(bundle: Bundle = .main) {
-        guard let rawURL = bundle.object(forInfoDictionaryKey: "SUPABASE_URL") as? String,
-              let key = bundle.object(forInfoDictionaryKey: "SUPABASE_PUBLISHABLE_KEY") as? String,
+        guard let rawURL = BackendConfiguration.value("SUPABASE_URL", bundle: bundle),
+              let key = BackendConfiguration.value("SUPABASE_PUBLISHABLE_KEY", bundle: bundle),
               let url = URL(string: rawURL), url.host != nil, !key.isEmpty else { return nil }
+        var storageKey = "account-session-v1"
+        #if DEBUG
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-ui-test-live"), let index = arguments.firstIndex(of: "-ui-test-store"), arguments.indices.contains(index + 1) {
+            storageKey = "acceptance-" + arguments[index + 1]
+        }
+        #endif
         client = SupabaseClient(
             supabaseURL: url,
             supabaseKey: key,
             options: .init(auth: .init(
                 storage: KeychainLocalStorage(service: "com.yiyun.essaypilot.auth"),
-                storageKey: "account-session-v1",
+                storageKey: storageKey,
                 autoRefreshToken: true
             ))
         )
@@ -68,7 +96,40 @@ struct SupabaseAuthService: AuthService {
         _ = try await client.auth.update(user: UserAttributes(email: email))
     }
 
+    private struct NicknameProfile: Decodable { let nickname: String? }
+    private struct NicknameWrite: Encodable { let nickname: String }
+    func profileNickname(userID: UUID) async throws -> String? {
+        guard try await client.auth.session.user.id == userID else { throw AuthServiceError.invalidSession }
+        let profile: NicknameProfile = try await client.from("profiles").select("nickname")
+            .eq("id", value: userID.uuidString).single().execute().value
+        return ProfileNicknameCache.normalized(profile.nickname)
+    }
+    func updateNickname(_ nickname: String, userID: UUID) async throws -> String? {
+        guard try await client.auth.session.user.id == userID else { throw AuthServiceError.invalidSession }
+        let profile: NicknameProfile = try await client.from("profiles").update(NicknameWrite(nickname: nickname))
+            .eq("id", value: userID.uuidString).select("nickname").single().execute().value
+        return ProfileNicknameCache.normalized(profile.nickname)
+    }
+
     func signOut() async throws {
+        try await client.auth.signOut()
+    }
+
+    func deleteAccount() async throws {
+        let session = try await client.auth.session
+        guard let rawURL = BackendConfiguration.value("SUPABASE_URL", bundle: .main),
+              let apiKey = BackendConfiguration.value("SUPABASE_PUBLISHABLE_KEY", bundle: .main),
+              let url = URL(string: rawURL)?.appendingPathComponent("functions/v1/delete-account") else {
+            throw AuthServiceError.invalidSession
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("Bearer \(session.accessToken)", forHTTPHeaderField: "Authorization")
+        request.setValue(apiKey, forHTTPHeaderField: "apikey")
+        let (_, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
+            throw AuthServiceError.invalidSession
+        }
         try await client.auth.signOut()
     }
 }
@@ -82,10 +143,15 @@ private extension AccountSession {
 #if DEBUG
 actor UITestAuthService: AuthService {
     private var session: AccountSession?
+    private var nicknames: [UUID: String] = [:]
     nonisolated var sessionChanges: AsyncStream<AccountSession?> { AsyncStream { _ in } }
 
     func currentSession() async throws -> AccountSession? { session }
-    func requestCode(email: String) async throws {}
+    func requestCode(email: String) async throws {
+        if ProcessInfo.processInfo.arguments.contains("-ui-test-auth-network-failure") {
+            throw URLError(.secureConnectionFailed)
+        }
+    }
     func verifyCode(email: String, code: String) async throws -> AccountSession {
         guard code == "123456" else { throw AuthServiceError.invalidTestCode }
         let session = AccountSession(
@@ -95,10 +161,16 @@ actor UITestAuthService: AuthService {
         self.session = session
         return session
     }
+    func profileNickname(userID: UUID) async throws -> String? { ProfileNicknameCache.normalized(nicknames[userID]) }
+    func updateNickname(_ nickname: String, userID: UUID) async throws -> String? {
+        guard session?.userID == userID else { throw AuthServiceError.invalidSession }
+        nicknames[userID] = nickname; return ProfileNicknameCache.normalized(nickname)
+    }
     func updateEmail(_ email: String) async throws {
         guard let session else { throw AuthServiceError.invalidSession }
         self.session = AccountSession(userID: session.userID, email: email)
     }
     func signOut() async throws { session = nil }
+    func deleteAccount() async throws { session = nil }
 }
 #endif

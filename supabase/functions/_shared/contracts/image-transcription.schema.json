@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["text", "uncertain"],
+  "properties": {
+    "text": { "type": "string", "minLength": 1, "maxLength": 20000 },
+    "uncertain": {
+      "type": "array",
+      "maxItems": 100,
+      "items": { "type": "string", "maxLength": 1000 }
+    }
+  }
+}

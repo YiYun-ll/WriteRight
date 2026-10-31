@@ -1,3 +1,6 @@
+import { validSentenceReviews } from "./sentence-review.ts";
+import { validDevelopment } from "./development.ts";
+import { validRewriteStudy } from "./rewrite-study.ts";
 import { Ajv2020 } from "npm:ajv@8.17.1/dist/2020.js";
 import schema from "../contracts/report.schema.json" with { type: "json" };
 import { scoreBand } from "./context.ts";
@@ -130,12 +133,48 @@ export function validateReport(value: unknown, context: GradingContext): Grading
     }
   }
   // Conservative guard, not a complete fact/semantic verifier. Human quality evaluation remains required.
-  const factSource = context.originalText + "\n" + context.task.prompt;
+  const factSource = context.originalText + "\n" + context.task.prompt + "\n" +
+    JSON.stringify(context.task.chartFacts ?? []);
   const sourceNumbers = new Set([...numberTokens(factSource), ...spelledNumberTokens(factSource)]);
   if (numberTokens(report.rewrites.enhanced).some((token) => !sourceNumbers.has(token))) {
     errors.add("REWRITE_NEW_NUMBER");
   }
   if (errors.size) throw new ReportValidationError([...errors]);
   report.rewrites.minimal = composeMinimal(context, report);
+  if (
+    !validRewriteStudy(report.rewrites, ["1.1.0", "1.2.0", "1.3.0"].includes(report.schema_version))
+  ) {
+    throw new ReportValidationError(["REWRITE_STUDY"]);
+  }
+  if (
+    ["WRITERIGHT_GRADING_V1_4", "WRITERIGHT_GRADING_V1_5"].includes(context.promptVersion) &&
+    !validDevelopment(
+      report.advanced_advice,
+      report.model_essay,
+      context.mode === "full",
+      true,
+      context.originalText,
+      undefined,
+      context.promptVersion === "WRITERIGHT_GRADING_V1_5" ? report.rewrites : undefined,
+    )
+  ) {
+    throw new ReportValidationError(["DEVELOPMENT"]);
+  }
+  if (
+    context.promptVersion === "WRITERIGHT_GRADING_V1_5" &&
+    !validSentenceReviews(report.sentence_reviews, { sentences: context.sentences })
+  ) {
+    throw new ReportValidationError(["SENTENCE_REVIEWS"]);
+  }
+  if (context.promptVersion === "WRITERIGHT_GRADING_V1_5") {
+    for (const item of report.sentence_reviews!.items) {
+      const correction = report.corrections.find((x) => x.sentence_id === item.sentence_id);
+      if (
+        correction?.severity === "required"
+          ? item.status !== "required" || item.revised !== correction.minimal_corrected
+          : item.status === "required"
+      ) throw new ReportValidationError(["SENTENCE_REVIEW_CONFLICT"]);
+    }
+  }
   return report;
 }

@@ -73,6 +73,47 @@ function good(ctx: GradingContext): GradingReport {
       optional_upgrade: null,
     }],
     rewrites: { minimal: "untrusted model rewrite", enhanced: ctx.originalText },
+    sentence_reviews: {
+      coverage: "complete",
+      notice_zh: "",
+      items: ctx.sentences.map((sentence, index) => ({
+        index: index + 1,
+        sentence_id: sentence.id,
+        page: null,
+        original: sentence.original,
+        revised: index === 0 ? sentence.original.replace("has", "have") : sentence.original,
+        status: index === 0 ? "required" as const : "keep" as const,
+        reason_zh: index === 0 ? "主语I应与have搭配。" : "句子信息清楚，保留原句。",
+      })),
+    },
+    advanced_advice: [
+      {
+        focus: "sentence",
+        observation_zh: "把主干写清楚",
+        before: ctx.sentences[0].original,
+        after: "I have a book.",
+        why_zh: "先保证主谓一致，再安排信息。",
+        practice_zh: "改写一句，检查主干。",
+        page: null,
+      },
+      {
+        focus: "structure",
+        observation_zh: "分段承接",
+        before: "",
+        after: "Describe the change, then explain it.",
+        why_zh: "段落分别承担描述和解释。",
+        practice_zh: "为每段写一句目的。",
+        page: null,
+      },
+    ],
+    model_essay: ctx.mode === "full"
+      ? {
+        english: "Reading opens a window to new ideas.",
+        translation_zh: "我有一本书。",
+        highlights: [{ text: "Reading opens a window to new ideas.", reason_zh: "主干清楚。" }],
+        rationale_zh: "合成示范。",
+      }
+      : null,
     review: { top_issues: [], expressions: [], practice_advice: "测试" },
   };
 }
@@ -133,6 +174,8 @@ Deno.test("optional suggestions never change the deterministic minimal rewrite",
   report.corrections[0].severity = "optional";
   report.corrections[0].minimal_corrected = report.corrections[0].original;
   report.corrections[0].optional_upgrade = "An optional suggestion.";
+  report.sentence_reviews!.items[0].status = "optional";
+  report.sentence_reviews!.items[0].revised = "An optional suggestion.";
   assert(validateReport(report, ctx).rewrites.minimal === ctx.originalText);
   report.corrections[0].minimal_corrected = "Changed.";
   expectCode(report, ctx, "OPTIONAL_CHANGED_MINIMAL");
@@ -224,6 +267,19 @@ Deno.test("runner repairs malformed JSON once and owns statistical metadata", as
       calls++;
       const report = good(ctx);
       report.word_count = 999;
+      report.rewrites.study = {
+        minimal: {
+          translation_zh: "合成测试译文。",
+          highlights: [{
+            text: ctx.sentences[0].original.replace("has", "have"),
+            reason_zh: "测试句。",
+          }],
+        },
+        enhanced: {
+          translation_zh: "合成测试译文。",
+          highlights: [{ text: ctx.sentences[2].original, reason_zh: "测试句。" }],
+        },
+      };
       return Promise.resolve({
         content: calls === 1 ? "{" : JSON.stringify(report),
         model: "mock-revision",
@@ -318,3 +374,24 @@ for (
     }
   });
 }
+
+Deno.test("soft OCR wraps stay in one sentence without rewriting the source", () => {
+  const text = "I has\nprepared a book. It is useful.\n\nAnother paragraph.";
+  const rows = segmentSentences(text);
+  assert(rows.length === 3);
+  assert(rows[0].original === "I has\nprepared a book.");
+  assert(rows[2].paragraphIndex === 1);
+  for (const row of rows) {
+    assert(text.slice(row.startUTF16, row.startUTF16 + row.lengthUTF16) === row.original);
+  }
+});
+Deno.test("CRLF wraps and blank paragraphs keep Unicode UTF-16 offsets", () => {
+  const text = "😀 I recieved\r\na letter.\r\n \t\r\nThe rate is 3.5%.";
+  const rows = segmentSentences(text);
+  assert(rows.length === 2);
+  assert(rows[0].original.includes("recieved\r\na"));
+  assert(rows[1].paragraphIndex === 1);
+  for (const row of rows) {
+    assert(text.slice(row.startUTF16, row.startUTF16 + row.lengthUTF16) === row.original);
+  }
+});

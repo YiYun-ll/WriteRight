@@ -12,6 +12,14 @@ export interface GradingInput {
     revision: number;
     confirmed: boolean;
     requirements: TaskPoint[];
+    chartFacts?: {
+      id: string;
+      label: string;
+      period: string | null;
+      value: string;
+      unit: string;
+      confirmed_by_user: boolean;
+    }[];
   };
 }
 export interface Sentence {
@@ -31,7 +39,7 @@ export interface GradingContext extends GradingInput {
   modelID: string;
 }
 export interface GradingReport {
-  schema_version: "1.0.0";
+  schema_version: "1.0.0" | "1.1.0" | "2.0.0" | "2.1.0" | "2.2.0" | "1.2.0" | "1.3.0" | "2.3.0";
   part: Part;
   grading_mode: GradingMode;
   score: {
@@ -68,7 +76,10 @@ export interface GradingReport {
     reason_zh: string;
     optional_upgrade: string | null;
   }[];
-  rewrites: { minimal: string; enhanced: string };
+  rewrites: { minimal: string; enhanced: string; study?: RewriteStudy };
+  sentence_reviews?: SentenceReviews;
+  advanced_advice?: AdvancedAdvice[];
+  model_essay?: ModelEssay | null;
   review: {
     top_issues: string[];
     expressions: { expression: string; meaning: string; usage: string }[];
@@ -77,8 +88,10 @@ export interface GradingReport {
 }
 
 export interface CompletionRequest {
+  maxOutputTokens?: number;
   system: string;
   user: string;
+  images?: string[];
 }
 export interface CompletionResult {
   content: string;
@@ -89,4 +102,41 @@ export interface CompletionResult {
 }
 export interface ModelAdapter {
   complete(request: CompletionRequest): Promise<CompletionResult>;
+}
+
+export interface RewriteStudyVersion {
+  translation_zh: string;
+  highlights: { text: string; reason_zh: string }[];
+}
+export interface RewriteStudy {
+  minimal: RewriteStudyVersion;
+  enhanced: RewriteStudyVersion;
+}
+
+export interface AdvancedAdvice {
+  focus: "sentence" | "structure";
+  observation_zh: string;
+  before: string;
+  after: string;
+  why_zh: string;
+  practice_zh: string;
+  page: number | null;
+}
+export interface ModelEssay extends RewriteStudyVersion {
+  english: string;
+  rationale_zh: string;
+}
+
+export interface SentenceReviews {
+  coverage: "complete" | "partial" | "unreadable";
+  notice_zh: string;
+  items: {
+    index: number;
+    sentence_id: string | null;
+    page: number | null;
+    original: string;
+    revised: string | null;
+    status: "required" | "optional" | "keep" | "uncertain";
+    reason_zh: string;
+  }[];
 }

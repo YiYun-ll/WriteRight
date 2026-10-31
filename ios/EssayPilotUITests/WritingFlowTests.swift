@@ -3,18 +3,29 @@ import XCTest
 final class WritingFlowTests: XCTestCase {
     func testWriteRightHomeAndNavigation() {
         let app = XCUIApplication()
-        app.launchArguments = ["-ui-test-store", UUID().uuidString, "-appearance", "light"]
+        app.launchArguments = ["-ui-test-store", UUID().uuidString, "-appearance", "light", "-ui-test-today", "2026-10-29"]
         app.launch()
         XCTAssertTrue(app.staticTexts["brand-wordmark"].waitForExistence(timeout: 10))
+        let countdown = app.descendants(matching: .any)["exam-countdown"]
+        XCTAssertTrue(countdown.waitForExistence(timeout: 5))
+        XCTAssertTrue(countdown.label.contains("今天"))
+        XCTAssertTrue(countdown.label.contains("2026年12月19日"))
+        XCTAssertTrue(countdown.label.contains("还有 51 天"))
+        XCTAssertTrue(app.staticTexts["exam-note"].label.contains("离初试还有五十一天"))
+        XCTAssertFalse(app.buttons["new-part-A"].exists)
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "WriteRight light home"; attachment.lifetime = .keepAlways
         add(attachment)
         app.tabBars.buttons["练习"].tap()
-        XCTAssertTrue(app.buttons["new-part-B"].exists)
-        app.tabBars.buttons["历史"].tap()
+        XCTAssertTrue(app.buttons["new-part-B"].waitForExistence(timeout: 5))
+        let practice = XCTAttachment(screenshot: app.screenshot())
+        practice.name = "Practice paper entries"; practice.lifetime = .keepAlways
+        add(practice)
+        app.tabBars.buttons["练习"].tap()
+        app.buttons["practice-history"].tap()
         XCTAssertTrue(app.staticTexts["还没有练习"].waitForExistence(timeout: 5))
         app.tabBars.buttons["我的"].tap()
-        XCTAssertTrue(app.staticTexts["WriteRight"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["profile-practice"].waitForExistence(timeout: 5))
         let profile = XCTAttachment(screenshot: app.screenshot())
         profile.name = "WriteRight serif profile"; profile.lifetime = .keepAlways
         add(profile)
@@ -22,14 +33,21 @@ final class WritingFlowTests: XCTestCase {
 
     func testBrandHomeAndAccessibleDarkLayout() {
         let app = XCUIApplication()
-        app.launchArguments = ["-ui-test-store", UUID().uuidString, "-appearance", "dark", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launchArguments = ["-ui-test-store", UUID().uuidString, "-appearance", "dark", "-ui-test-today", "2026-12-19", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
         app.launch()
-        XCTAssertTrue(app.buttons["new-part-A"].waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["new-part-B"].exists)
-        XCTAssertTrue(app.tabBars.buttons["历史"].exists)
+        let countdown = app.descendants(matching: .any)["exam-countdown"]
+        XCTAssertTrue(countdown.waitForExistence(timeout: 10))
+        XCTAssertTrue(countdown.label.contains("今天"))
+        XCTAssertTrue(countdown.label.contains("2026年12月19日"))
+        XCTAssertTrue(countdown.label.contains("初试这一天"))
+        XCTAssertFalse(app.buttons["new-part-A"].exists)
+        XCTAssertTrue(app.tabBars.buttons["记录"].exists)
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "Dark accessible home"; attachment.lifetime = .keepAlways
         add(attachment)
+        app.tabBars.buttons["练习"].tap()
+        XCTAssertTrue(app.buttons["new-part-A"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["new-part-B"].exists)
         app.swipeUp()
         app.buttons["new-part-B"].tap()
         XCTAssertTrue(app.navigationBars["大作文"].waitForExistence(timeout: 5))
@@ -39,6 +57,7 @@ final class WritingFlowTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-test-store", UUID().uuidString]
         app.launch()
+        app.tabBars.buttons["练习"].tap()
         XCTAssertTrue(app.buttons["new-part-A"].waitForExistence(timeout: 10))
         app.buttons["new-part-A"].tap()
         let title = app.textFields["task-title"]
@@ -55,8 +74,9 @@ final class WritingFlowTests: XCTestCase {
         app.buttons["finish-editing"].tap()
         XCTAssertTrue(app.staticTexts["Reading club"].waitForExistence(timeout: 5))
         app.terminate(); app.launch()
-        XCTAssertTrue(app.staticTexts["Reading club"].waitForExistence(timeout: 10))
-        app.staticTexts["Reading club"].firstMatch.tap()
+        app.tabBars.buttons["练习"].tap()
+        XCTAssertTrue(app.staticTexts["continue-title"].waitForExistence(timeout: 10))
+        app.staticTexts["continue-title"].firstMatch.tap()
         XCTAssertTrue(app.textViews["essay-body"].waitForExistence(timeout: 5))
         XCTAssertTrue((app.textViews["essay-body"].value as? String ?? "").contains("Dear Alex"))
         XCTAssertTrue(app.images["task-confirmed"].exists)
@@ -69,6 +89,7 @@ final class WritingFlowTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-test-store", UUID().uuidString]
         app.launch()
+        app.tabBars.buttons["练习"].tap()
         XCTAssertTrue(app.buttons["new-part-B"].waitForExistence(timeout: 10))
         app.buttons["new-part-B"].tap()
         let title = app.textFields["task-title"]
@@ -80,8 +101,9 @@ final class WritingFlowTests: XCTestCase {
         XCUIDevice.shared.press(.home)
         XCTAssertTrue(app.wait(for: .runningBackground, timeout: 5))
         app.terminate(); app.launch()
-        XCTAssertTrue(app.staticTexts["Unfinished draft"].waitForExistence(timeout: 10))
-        app.staticTexts["Unfinished draft"].firstMatch.tap()
+        app.tabBars.buttons["练习"].tap()
+        XCTAssertTrue(app.staticTexts["continue-title"].waitForExistence(timeout: 10))
+        app.staticTexts["continue-title"].firstMatch.tap()
         XCTAssertTrue(app.textViews["essay-body"].waitForExistence(timeout: 5))
         XCTAssertTrue((app.textViews["essay-body"].value as? String ?? "").contains("steady rise"))
     }
@@ -90,6 +112,7 @@ final class WritingFlowTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-test-store", UUID().uuidString, "-appearance", "light"]
         app.launch()
+        app.tabBars.buttons["练习"].tap()
         for (part, name) in [("A", "Reading club"), ("B", "Online learning")] {
             XCTAssertTrue(app.buttons["new-part-\(part)"].waitForExistence(timeout: 10))
             app.buttons["new-part-\(part)"].tap()
@@ -98,7 +121,8 @@ final class WritingFlowTests: XCTestCase {
             title.tap(); title.typeText(name)
             app.buttons["finish-editing"].tap()
         }
-        app.tabBars.buttons["历史"].tap()
+        app.tabBars.buttons["练习"].tap()
+        app.buttons["practice-history"].tap()
         XCTAssertTrue(app.staticTexts["Reading club"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Online learning"].exists)
         app.segmentedControls.buttons["大作文"].tap()
@@ -111,5 +135,16 @@ final class WritingFlowTests: XCTestCase {
         search.tap(); search.typeText("Reading")
         XCTAssertTrue(app.staticTexts["Reading club"].exists)
         XCTAssertFalse(app.staticTexts["Online learning"].exists)
+    }
+
+    func testManualEditorCanSwitchToDirectPhotoPractice() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ui-test-store", UUID().uuidString]
+        app.launch()
+        app.tabBars.buttons["练习"].tap()
+        app.buttons["new-part-A"].tap()
+        app.buttons["open-scan"].tap()
+        XCTAssertTrue(app.buttons["photo-album-task"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.textViews["scan-transcript-0"].exists)
     }
 }
