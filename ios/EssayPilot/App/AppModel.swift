@@ -10,6 +10,8 @@ import Foundation
     @Published private(set) var notebook: [NotebookEntry] = []
     @Published private(set) var favorites: [FavoriteDocument] = []
     @Published private(set) var syncState = "未同步"
+    /// Bumps after each successful merge of the account's cat, so the desk reloads what came back.
+    @Published private(set) var companionRevision = 0
     @Published private(set) var account: AccountSession?
     @Published private(set) var nickname: String?
     @Published private(set) var isNicknameLoading = false
@@ -516,12 +518,37 @@ import Foundation
         }
     }
 
+    /// Cached copy first, then the photo this device uploaded, then the network; whatever is found
+    /// is kept so the report still opens offline.
     func gradingPhoto(_ source: PhotoSource) async throws -> Data {
+        guard let owner = account?.userID else { throw AuthServiceError.invalidSession }
+        let cache = try? reportPhotoCache()
+        if let cached = cache?.data(for: source) { return cached }
+        if let local = uploadedOriginal(for: source) { try? cache?.store(local, for: source); return local }
         guard let gradingService, canGrade else { throw AuthServiceError.invalidSession }
-        let owner = account?.userID
         let data = try await gradingService.photoData(source)
         guard account?.userID == owner else { throw AuthServiceError.invalidSession }
+        try? cache?.store(data, for: source)
         return data
+    }
+
+    private func reportPhotoCache() throws -> ReportPhotoCache {
+        guard let account else { throw AuthServiceError.invalidSession }
+        let root = try storeRoot ?? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+        return ReportPhotoCache(root: root.appendingPathComponent("JuGuang/accounts/\(account.userID.uuidString)/report-photos"))
+    }
+
+    /// The exact bytes sent for grading are still on this device when the photos were taken here.
+    private func uploadedOriginal(for source: PhotoSource) -> Data? {
+        guard let store = try? scanImageStore(), source.page >= 1 else { return nil }
+        for submission in submissions {
+            let pages = (source.role == "task" ? submission.task.sourcePages : submission.essayPages) ?? []
+            guard pages.indices.contains(source.page - 1), let path = pages[source.page - 1].uploadRelativePath,
+                  let url = store.url(path), let data = try? Data(contentsOf: url),
+                  ContentFingerprint.hash(data) == source.checksum.lowercased() else { continue }
+            return data
+        }
+        return nil
     }
 
     func analyzePhotos(part: WritingPart, taskImages: [Data], essayImages: [Data]) async throws -> PhotoAnalysisResponse {
@@ -606,16 +633,14 @@ import Foundation
             return
         }
         if let running = syncTask, running.owner == userID { await running.task.value; return }
-        let transport = syncTransport ?? SupabaseSyncTransport(accessToken: { [authService] in
-            guard let service = authService as? SupabaseAuthService else { throw SyncTransportError.unavailable }
-            return try await service.client.auth.session.accessToken
-        })
+        let transport = currentSyncTransport
         syncState = "正在同步"
         let task = Task { [weak self] in
             do {
                 let summary = try await AccountSynchronizer.sync(userID: userID, repository: repository, transport: transport)
                 guard let self, self.account?.userID == userID else { return }
                 try self.reload()
+                await self.syncCompanion()
                 self.syncState = summary.conflicts > 0 ? "有冲突副本" : "已同步"
             } catch {
                 guard let self, self.account?.userID == userID else { return }
@@ -626,6 +651,32 @@ import Foundation
         syncTask = (userID, task)
         await task.value
         if syncTask?.owner == userID { syncTask = nil }
+    }
+
+    private var currentSyncTransport: any SyncTransport {
+        syncTransport ?? SupabaseSyncTransport(accessToken: { [authService] in
+            guard let service = authService as? SupabaseAuthService else { throw SyncTransportError.unavailable }
+            return try await service.client.auth.session.accessToken
+        })
+    }
+    private var companionTask: (owner: UUID, task: Task<Void, Never>)?
+    var companionStore = CompanionStore()
+    /// The cat is small and merge-only, so it syncs quietly when the desk opens. A failure keeps
+    /// local growth and retries next time; it never blocks writing data or shows an error.
+    func syncCompanion() async {
+        guard let userID = account?.userID else { return }
+        if let running = companionTask, running.owner == userID { await running.task.value; return }
+        let transport = currentSyncTransport
+        let task = Task { [weak self] in
+            guard let store = self?.companionStore,
+                  (try? await CompanionSync.sync(userID: userID, store: store, transport: transport)) != nil,
+                  let self, self.account?.userID == userID else { return }
+            // Even with nothing new, the desk reloads so its upload flag clears.
+            self.companionRevision += 1
+        }
+        companionTask = (userID, task)
+        await task.value
+        if companionTask?.owner == userID { companionTask = nil }
     }
 
     @discardableResult func saveNotebook(_ entry: NotebookEntry) -> Bool {
@@ -682,7 +733,7 @@ import Foundation
         activate(nil)
         syncState = "未同步"
         guard let removed else { return }
-        CompanionModel.erase(owner: removed.userID.uuidString); LegacyDeskNote.erase(owner: removed.userID.uuidString)
+        companionStore.erase(owner: removed.userID.uuidString); LegacyDeskNote.erase(owner: removed.userID.uuidString)
         nicknameCache.erase(removed.userID)
         do { try removeAccountFiles(removed) }
         catch { errorMessage = "账号已删除，但这台设备上的部分本机文件未能清理。可以稍后删除 App 来彻底清除。" }

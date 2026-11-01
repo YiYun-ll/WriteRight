@@ -3,14 +3,16 @@ import Charts
 
 struct FavoritesView: View {
     @EnvironmentObject private var model: AppModel
+    @StateObject private var removal = PendingRemoval()
+    private var visible: [FavoriteDocument] { model.favorites.filter { !removal.hides($0.id) } }
 
     var body: some View {
         Group {
-            if model.favorites.isEmpty {
+            if visible.isEmpty {
                 ContentUnavailableView("还没有收藏", systemImage: "bookmark")
             } else {
                 List {
-                    ForEach(model.favorites) { item in
+                    ForEach(visible) { item in
                         VStack(alignment: .leading, spacing: 8) {
                             Text(item.expression).font(.headline)
                             if !item.meaning.isEmpty { Text(item.meaning).font(.subheadline) }
@@ -24,7 +26,9 @@ struct FavoritesView: View {
                         }
                         .padding(.vertical, 8)
                         .swipeActions {
-                            Button("删除", role: .destructive) { model.deleteFavorite(id: item.id) }
+                            Button("删除", role: .destructive) {
+                                removal.remove(id: item.id, message: "已移除收藏「\(item.expression)」") { model.deleteFavorite(id: item.id) }
+                            }
                         }
                     }
                 }
@@ -34,6 +38,7 @@ struct FavoritesView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(WriteRightTheme.background).foregroundStyle(WriteRightTheme.ink)
         .navigationTitle("收藏")
+        .undoableRemoval(removal, account: model.account?.userID)
     }
 }
 

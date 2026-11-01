@@ -66,6 +66,29 @@ final class GradingFlowTests: XCTestCase {
         XCTAssertTrue(corner.waitForExistence(timeout: 5))
         let home = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); home.name = "home-reading-corner"; home.lifetime = .keepAlways; add(home)
         corner.tap()
-        XCTAssertTrue(app.staticTexts["be useful for"].waitForExistence(timeout: 5))
+        let favorite = app.staticTexts["be useful for"]
+        XCTAssertTrue(favorite.waitForExistence(timeout: 5))
+        favorite.swipeLeft(); app.buttons["删除"].firstMatch.tap()
+        let undo = app.buttons["undo-removal"]
+        XCTAssertTrue(undo.waitForExistence(timeout: 3))
+        XCTAssertFalse(favorite.exists)
+        let undoBar = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); undoBar.name = "favorite-undo-bar"; undoBar.lifetime = .keepAlways; add(undoBar)
+        undo.tap()
+        XCTAssertTrue(favorite.waitForExistence(timeout: 3))
+
+        app.tabBars.buttons["练习"].tap()
+        app.buttons["practice-history"].tap()
+        let row = app.staticTexts["Book club"].firstMatch
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        row.swipeLeft(); app.buttons["删除"].firstMatch.tap()
+        XCTAssertTrue(undo.waitForExistence(timeout: 3))
+        undo.tap()
+        XCTAssertTrue(row.waitForExistence(timeout: 3))
+        row.swipeLeft(); app.buttons["删除"].firstMatch.tap()
+        XCTAssertTrue(undo.waitForExistence(timeout: 3))
+        let gone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: undo)
+        wait(for: [gone], timeout: 10)
+        XCTAssertTrue(app.staticTexts["还没有练习"].waitForExistence(timeout: 3))
+        XCTAssertFalse(app.staticTexts["Book club"].exists)
     }
 }

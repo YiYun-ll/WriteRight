@@ -4,19 +4,21 @@ struct HistoryView: View {
     @EnvironmentObject private var model: AppModel
     @State private var search = ""
     @State private var part = "all"
+    @StateObject private var removal = PendingRemoval()
     let onOpen: (DraftDocument) -> Void
     let onCreate: () -> Void
 
+    private var visible: [DraftDocument] { model.drafts.filter { !$0.isEmpty && !removal.hides($0.id) } }
     private var filtered: [DraftDocument] {
-        model.drafts.filter { draft in
-            !draft.isEmpty && (part == "all" || draft.task.part.rawValue == part) &&
+        visible.filter { draft in
+            (part == "all" || draft.task.part.rawValue == part) &&
             (search.isEmpty || draft.task.displayTitle.localizedCaseInsensitiveContains(search) || draft.body.localizedCaseInsensitiveContains(search))
         }
     }
 
     var body: some View {
         Group {
-            if model.drafts.filter({ !$0.isEmpty }).isEmpty {
+            if visible.isEmpty {
                 ContentUnavailableView {
                     Label("还没有练习", systemImage: "text.book.closed")
                 } actions: { Button("写一篇", action: onCreate).buttonStyle(.borderedProminent) }
@@ -33,7 +35,11 @@ struct HistoryView: View {
                             ForEach(filtered) { draft in
                                 Button { onOpen(draft) } label: { DraftRow(draft: draft) }
                                     .buttonStyle(.plain).listRowBackground(WriteRightTheme.surface)
-                                    .swipeActions { Button("删除", role: .destructive) { model.delete(draft) } }
+                                    .swipeActions {
+                                        Button("删除", role: .destructive) {
+                                            removal.remove(id: draft.id, message: "已删除「\(draft.task.displayTitle)」") { model.delete(draft) }
+                                        }
+                                    }
                             }
                         }.listStyle(.insetGrouped).scrollContentBackground(.hidden)
                     }
@@ -41,6 +47,7 @@ struct HistoryView: View {
             }
         }.frame(maxWidth: .infinity, maxHeight: .infinity).background(WriteRightTheme.background)
             .foregroundStyle(WriteRightTheme.ink).navigationTitle("历史")
+            .undoableRemoval(removal, account: model.account?.userID)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink("成绩") { PracticeStatsView() }

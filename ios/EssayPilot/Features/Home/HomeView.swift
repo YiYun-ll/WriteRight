@@ -28,7 +28,8 @@ struct HomeView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityAddTraits(.isHeader)
                 InteractiveDeskView(mood: mood, owner: owner, reportCount: model.gradingReports.count,
-                                    now: now, daysToExam: snapshot.daysRemaining)
+                                    now: now, daysToExam: snapshot.daysRemaining, companionRevision: model.companionRevision,
+                                    companionGrew: { Task { await model.syncCompanion() } })
                     .id("home-scene-" + owner)
                 countdown
                 VStack(alignment: .leading, spacing: 18) {
@@ -59,7 +60,10 @@ struct HomeView: View {
         .background(WriteRightTheme.background)
         .foregroundStyle(WriteRightTheme.ink)
         .onReceive(Timer.publish(every: 60, on: .main, in: .common).autoconnect()) { _ in now = ExamDesk.referenceNow() }
-        .onChange(of: scenePhase) { _, phase in if phase == .active { now = ExamDesk.referenceNow() } }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { now = ExamDesk.referenceNow(); Task { await model.syncCompanion() } }
+        }
+        .task(id: owner) { await model.syncCompanion() }
         .onChange(of: model.account?.userID) { _, _ in favoriteID = nil; showFavoriteMeaning = false; mood = .ready }
         .navigationTitle("")
         .navigationBarTitleDisplayMode(.inline)

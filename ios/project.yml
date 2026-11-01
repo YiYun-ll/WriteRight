@@ -36,7 +36,7 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_NSCameraUsageDescription: 拍摄题目和作文，交给 AI 看图批改并保留原稿回看。
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
-        MARKETING_VERSION: "0.1.0"
+        MARKETING_VERSION: "0.2.0"
         CURRENT_PROJECT_VERSION: "1"
   EssayPilotTests:
     type: bundle.unit-test

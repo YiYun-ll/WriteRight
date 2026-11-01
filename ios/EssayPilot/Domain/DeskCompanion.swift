@@ -21,29 +21,85 @@ enum CompanionStage: Int, CaseIterable, Comparable, Identifiable, Sendable {
     static func stage(points: Int) -> CompanionStage { allCases.last { points >= $0.threshold } ?? .kitten }
 }
 
-struct CompanionState: Codable, Equatable, Sendable {
+/// The part of the cat that follows the account across devices. Every field merges without losing
+/// either side: days are sets, minutes are counted per device, and the newest rename wins.
+/// The server's `merge_companion` applies the same rules.
+struct CompanionGrowth: Codable, Equatable, Sendable {
     static let defaultName = "团团"
-    var name = CompanionState.defaultName
+    var name = CompanionGrowth.defaultName
+    var nameUpdatedAt: Date?
     var metAt: Date
-    var visitDays = 0
-    var lastVisitDay: String?
-    var patDays = 0
-    var lastPatDay: String?
-    var treatDays = 0
-    var lastTreatDay: String?
-    var focusMinutes = 0
-    var focusSessions = 0
+    var visitDays: Set<String> = []
+    var patDays: Set<String> = []
+    var treatDays: Set<String> = []
+    var focusMinutes: [String: Int] = [:]
+    var focusSessions: [String: Int] = [:]
+    var celebratedStage = 0
+
+    init(metAt: Date) { self.metAt = metAt }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        name = try c.decodeIfPresent(String.self, forKey: .name) ?? Self.defaultName
+        nameUpdatedAt = try c.decodeIfPresent(Date.self, forKey: .nameUpdatedAt)
+        metAt = try c.decode(Date.self, forKey: .metAt)
+        visitDays = try c.decodeIfPresent(Set<String>.self, forKey: .visitDays) ?? []
+        patDays = try c.decodeIfPresent(Set<String>.self, forKey: .patDays) ?? []
+        treatDays = try c.decodeIfPresent(Set<String>.self, forKey: .treatDays) ?? []
+        focusMinutes = try c.decodeIfPresent([String: Int].self, forKey: .focusMinutes) ?? [:]
+        focusSessions = try c.decodeIfPresent([String: Int].self, forKey: .focusSessions) ?? [:]
+        celebratedStage = try c.decodeIfPresent(Int.self, forKey: .celebratedStage) ?? 0
+    }
+
+    var totalFocusMinutes: Int { focusMinutes.values.reduce(0, +) }
+    var totalFocusSessions: Int { focusSessions.values.reduce(0, +) }
+    func points(reports: Int) -> Int {
+        visitDays.count * CompanionState.Rule.visit + patDays.count * CompanionState.Rule.pat
+            + treatDays.count * CompanionState.Rule.treat
+            + totalFocusMinutes / CompanionState.Rule.focusMinutesPerPoint + max(0, reports) * CompanionState.Rule.report
+    }
+    func merged(with other: CompanionGrowth) -> CompanionGrowth {
+        var result = self
+        let mine = nameUpdatedAt ?? .distantPast, theirs = other.nameUpdatedAt ?? .distantPast
+        if theirs > mine || (theirs == mine && other.name > name) { result.name = other.name; result.nameUpdatedAt = other.nameUpdatedAt }
+        result.metAt = min(metAt, other.metAt)
+        result.visitDays.formUnion(other.visitDays)
+        result.patDays.formUnion(other.patDays)
+        result.treatDays.formUnion(other.treatDays)
+        result.focusMinutes.merge(other.focusMinutes, uniquingKeysWith: max)
+        result.focusSessions.merge(other.focusSessions, uniquingKeysWith: max)
+        result.celebratedStage = max(celebratedStage, other.celebratedStage)
+        return result
+    }
+}
+
+struct CompanionState: Codable, Equatable, Sendable {
+    static let defaultName = CompanionGrowth.defaultName
+    var growth: CompanionGrowth
+    /// A running session belongs to this device only.
     var focusStartedAt: Date?
     var focusEndsAt: Date?
-    var celebratedStage = 0
+    /// Growth changed here since the account last confirmed it.
+    var needsUpload = false
+
+    init(metAt: Date) { growth = CompanionGrowth(metAt: metAt) }
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        growth = try c.decode(CompanionGrowth.self, forKey: .growth)
+        focusStartedAt = try c.decodeIfPresent(Date.self, forKey: .focusStartedAt)
+        focusEndsAt = try c.decodeIfPresent(Date.self, forKey: .focusEndsAt)
+        needsUpload = try c.decodeIfPresent(Bool.self, forKey: .needsUpload) ?? false
+    }
+
+    var name: String { growth.name }
+    var metAt: Date { growth.metAt }
+    var visitDays: Int { growth.visitDays.count }
+    var focusMinutes: Int { growth.totalFocusMinutes }
+    var focusSessions: Int { growth.totalFocusSessions }
 
     enum Rule {
         static let visit = 2, pat = 1, treat = 1, focusMinutesPerPoint = 5, report = 4
     }
-    func points(reports: Int) -> Int {
-        visitDays * Rule.visit + patDays * Rule.pat + treatDays * Rule.treat
-            + focusMinutes / Rule.focusMinutesPerPoint + max(0, reports) * Rule.report
-    }
+    func points(reports: Int) -> Int { growth.points(reports: reports) }
     static func dayKey(_ date: Date, calendar: Calendar) -> String {
         let parts = calendar.dateComponents([.year, .month, .day], from: date)
         return String(format: "%04d-%02d-%02d", parts.year ?? 0, parts.month ?? 0, parts.day ?? 0)

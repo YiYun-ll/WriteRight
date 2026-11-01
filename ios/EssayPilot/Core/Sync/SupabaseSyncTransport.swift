@@ -50,6 +50,11 @@ struct SupabaseSyncTransport: SyncTransport {
         }
     }
 
+    func mergeCompanion(userID: UUID, growth: CompanionGrowth) async throws -> CompanionGrowth {
+        struct Body: Encodable { let incoming: CompanionGrowth }
+        return try await call("merge_companion", body: Body(incoming: growth), as: CompanionGrowth.self)
+    }
+
     private func call<Body: Encodable, Response: Decodable>(_ function: String, body: Body, as: Response.Type) async throws -> Response {
         let token = try await accessToken()
         guard let rawURL = Bundle.main.object(forInfoDictionaryKey: "SUPABASE_URL") as? String,
