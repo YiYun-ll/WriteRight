@@ -67,7 +67,7 @@ struct GradingReportView: View {
                 if !photo.strengths.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("这一篇，值得留下的地方").font(.system(.title3, design: .serif))
-                        ForEach(photo.strengths, id: \.self) { Text($0).font(.subheadline).lineSpacing(5) }
+                        ForEach(Array(photo.strengths.enumerated()), id: \.offset) { _, item in Text(item).font(.subheadline).lineSpacing(5) }
                     }
                 }
                 if !photo.uncertainties.isEmpty {
@@ -87,7 +87,7 @@ struct GradingReportView: View {
             GentleNote(text: "分数记录这一次的落点。下一次，先把一处表达写得更清楚就好。")
             Text(document.report.overallComment).font(.body).lineSpacing(5)
             VStack(alignment: .leading, spacing: 18) {
-                ForEach(document.report.dimensions, id: \.name) { dimension in
+                ForEach(Array(document.report.dimensions.enumerated()), id: \.offset) { _, dimension in
                     VStack(alignment: .leading, spacing: 6) {
                         HStack {
                             Text(dimension.name).font(.headline)
@@ -101,7 +101,7 @@ struct GradingReportView: View {
             if !document.report.taskChecks.isEmpty {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("题目要点").font(.title3.weight(.semibold))
-                    ForEach(document.report.taskChecks, id: \.pointID) { check in
+                    ForEach(Array(document.report.taskChecks.enumerated()), id: \.offset) { _, check in
                         HStack(alignment: .top, spacing: 12) {
                             Image(systemName: check.status == "passed" ? "checkmark.circle.fill" : "circle.dotted")
                                 .foregroundStyle(WriteRightTheme.accent)
@@ -141,7 +141,7 @@ struct GradingReportView: View {
             if !document.report.review.topIssues.isEmpty {
                 VStack(alignment: .leading, spacing: 14) {
                     Text("优先复盘").font(.title3.weight(.semibold))
-                    ForEach(document.report.review.topIssues, id: \.self) { issue in
+                    ForEach(Array(document.report.review.topIssues.enumerated()), id: \.offset) { _, issue in
                         Label(issue, systemImage: "arrow.turn.up.right")
                     }
                 }
@@ -149,7 +149,7 @@ struct GradingReportView: View {
             if !document.report.review.expressions.isEmpty {
                 VStack(alignment: .leading, spacing: 16) {
                     Text("值得积累").font(.title3.weight(.semibold))
-                    ForEach(document.report.review.expressions, id: \.expression) { item in
+                    ForEach(Array(document.report.review.expressions.enumerated()), id: \.offset) { _, item in
                         VStack(alignment: .leading, spacing: 6) {
                             HStack {
                                 Text(item.expression).font(.headline)

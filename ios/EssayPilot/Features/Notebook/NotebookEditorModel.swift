@@ -25,7 +25,8 @@ import Combine
         if (includeLink && !supplied.isEmpty || saved.kind == .link) && url == nil {
             error = "没有找到有效的 HTTPS 链接。可以粘贴整段分享文字，或改为随手记。"; return nil
         }
-        if !supplied.isEmpty, saved.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, let url, supplied != url.absoluteString {
+        if !supplied.isEmpty, saved.note.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, url != nil,
+           !NotebookLink.removingLinks(supplied).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             saved.note = supplied
         }
         saved.link = url?.absoluteString
@@ -33,7 +34,11 @@ import Combine
             if let line = saved.note.split(whereSeparator: \.isNewline).first, NotebookLink.url(String(line)) == nil {
                 saved.title = String(line.prefix(120))
             } else if let url {
-                saved.title = NotebookLink.source(url) == (url.host ?? "") ? "留住这一段灵感" : "\(NotebookLink.source(url))里的一点灵感"
+                if let shared = NotebookLink.suggestedTitle(supplied.isEmpty ? saved.note : supplied) {
+                    saved.title = String(shared.prefix(120))
+                } else {
+                    saved.title = NotebookLink.platform(url).map { "\($0.title)里的一点灵感" } ?? "留住这一段灵感"
+                }
             }
         }
         guard !saved.title.isEmpty, saved.title.count <= 120, saved.note.count <= 4000 else {

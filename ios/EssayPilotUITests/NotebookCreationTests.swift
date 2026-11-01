@@ -21,7 +21,7 @@ final class NotebookCreationTests: XCTestCase {
         let link = app.textFields["notebook-link"]
         XCTAssertTrue(link.waitForExistence(timeout: 5)); link.tap(); link.typeText("A moment to revisit https://xhslink.com/o/example")
         app.buttons["notebook-save"].tap()
-        XCTAssertTrue(app.staticTexts["小红书里的一点灵感"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["A moment to revisit"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["notebook-open-link"].exists)
         app.buttons["notebook-menu"].firstMatch.tap(); app.buttons["标记看过"].tap()
         XCTAssertTrue(app.staticTexts["已看过"].waitForExistence(timeout: 5))

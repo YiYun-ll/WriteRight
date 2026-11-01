@@ -11,6 +11,7 @@ struct HomeView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    private var owner: String { model.account?.userID.uuidString ?? "guest" }
     private var snapshot: ExamDesk.Snapshot {
         ExamDesk(calendar: .current).snapshot(on: now)
     }
@@ -26,8 +27,9 @@ struct HomeView: View {
                 BrandWordmark()
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityAddTraits(.isHeader)
-                InteractiveDeskView(mood: mood)
-                    .id("home-scene-" + (model.account?.userID.uuidString ?? "guest"))
+                InteractiveDeskView(mood: mood, owner: owner, reportCount: model.gradingReports.count,
+                                    now: now, daysToExam: snapshot.daysRemaining)
+                    .id("home-scene-" + owner)
                 countdown
                 VStack(alignment: .leading, spacing: 18) {
                     HStack {
@@ -49,8 +51,6 @@ struct HomeView: View {
                 .background(WriteRightTheme.surface, in: RoundedRectangle(cornerRadius: 8))
                 if let favorite = featuredFavorite { favoriteCorner(favorite) }
                 pausePage
-                HomePrivateNoteView(owner: model.account?.userID.uuidString ?? "guest")
-                    .id("home-note-" + (model.account?.userID.uuidString ?? "guest"))
             }
             .padding(.horizontal, 24)
             .padding(.top, 15)

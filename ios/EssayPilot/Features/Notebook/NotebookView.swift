@@ -10,7 +10,13 @@ struct NotebookView: View {
     @State private var removed: NotebookEntry?
     @State private var response: String?
     @State private var openFailed = false
-    private var sections: [NotebookPresentation.Section] { NotebookPresentation.sections(app.notebook, filter: filter, search: search) }
+    @State private var source: String?
+    @State private var legacyNote: String?
+    @State private var confirmLegacyDiscard = false
+    private var owner: String { app.account?.userID.uuidString ?? "guest" }
+    private var linkSources: [NotebookPresentation.LinkSource] { NotebookPresentation.linkSources(app.notebook) }
+    private var activeSource: String? { linkSources.contains { $0.title == source } ? source : nil }
+    private var sections: [NotebookPresentation.Section] { NotebookPresentation.sections(app.notebook, filter: filter, search: search, source: filter == "links" ? activeSource : nil) }
     private var completedCount: Int { app.notebook.filter(\.completed).count }
     private var animation: Animation? { reduceMotion ? nil : .spring(response: 0.4, dampingFraction: 0.88) }
 
@@ -32,6 +38,8 @@ struct NotebookView: View {
                     Spacer(minLength: 0)
                     if !search.isEmpty { Text("搜索结果").font(.footnote).foregroundStyle(WriteRightTheme.secondary) }
                 }
+                if filter == "links", linkSources.count > 1 { sourceShelf }
+                if let legacyNote { legacyNoteCard(legacyNote) }
                 if let response {
                     Text(response).font(.system(.subheadline, design: .serif)).foregroundStyle(WriteRightTheme.secondary)
                         .lineSpacing(4).accessibilityIdentifier("notebook-response").transition(.opacity)
@@ -67,7 +75,7 @@ struct NotebookView: View {
             NotebookEditor(entry: entry) { saved in
                 guard app.saveNotebook(saved) else { return false }
                 // A successful save must not disappear behind an old search/completed filter.
-                search = ""
+                search = ""; source = nil
                 if filter == "done" && !saved.completed || filter == "links" && saved.safeURL == nil { filter = "pending" }
                 if saved.completed && filter == "pending" { filter = "done" }
                 return true
@@ -84,7 +92,63 @@ struct NotebookView: View {
             }
         }
         .alert("链接暂时未能打开", isPresented: $openFailed) { Button("知道了", role: .cancel) {} } message: { Text("记录仍在。可以进入编辑，检查或复制链接后再试。") }
-        .onChange(of: app.account?.userID) { _, _ in editing = nil; removed = nil; response = nil; search = ""; filter = "pending" }
+        .confirmationDialog("删除以前的首页便笺？", isPresented: $confirmLegacyDiscard, titleVisibility: .visible) {
+            Button("删除这段便笺", role: .destructive) { LegacyDeskNote.erase(owner: owner); legacyNote = nil }
+        } message: { Text("删除后无法找回。") }
+        .onAppear { legacyNote = LegacyDeskNote.load(owner: owner) }
+        .onChange(of: filter) { _, _ in source = nil }
+        .onChange(of: app.account?.userID) { _, _ in
+            editing = nil; removed = nil; response = nil; search = ""; filter = "pending"; source = nil
+            legacyNote = LegacyDeskNote.load(owner: owner)
+        }
+    }
+    private var sourceShelf: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8) {
+                sourceChip("全部来源", count: linkSources.reduce(0) { $0 + $1.count }, selected: activeSource == nil, id: "notebook-source-all") { source = nil }
+                ForEach(linkSources) { item in
+                    sourceChip(item.title, count: item.count, selected: activeSource == item.title, id: "notebook-source-" + item.title) { source = item.title }
+                }
+            }
+        }.accessibilityElement(children: .contain).accessibilityLabel("按链接来源整理")
+    }
+    private func sourceChip(_ title: String, count: Int, selected: Bool, id: String, action: @escaping () -> Void) -> some View {
+        Button { withAnimation(animation) { action() } } label: {
+            HStack(spacing: 6) { Text(title); Text("\(count)").monospacedDigit().foregroundStyle(selected ? WriteRightTheme.accent : WriteRightTheme.secondary) }
+                .font(.subheadline).padding(.horizontal, 14).frame(minHeight: 40)
+                .foregroundStyle(selected ? WriteRightTheme.accent : WriteRightTheme.ink)
+                .background(selected ? WriteRightTheme.surface : Color.clear, in: Capsule())
+                .overlay { Capsule().strokeBorder(selected ? WriteRightTheme.accent.opacity(0.35) : WriteRightTheme.secondary.opacity(0.2)) }
+                .contentShape(Capsule())
+        }.buttonStyle(.plain).accessibilityLabel("\(title)，\(count) 条").accessibilityAddTraits(selected ? [.isSelected] : [])
+            .accessibilityIdentifier(id)
+    }
+    private func legacyNoteCard(_ note: String) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("以前留在首页的便笺").font(.system(.headline, design: .serif))
+            Text(note).font(.system(.subheadline, design: .serif)).foregroundStyle(WriteRightTheme.secondary).lineSpacing(4)
+                .fixedSize(horizontal: false, vertical: true).textSelection(.enabled)
+            Text(app.account == nil ? "首页换成了陪伴小窝，这段话还留在本机。收进记录后，可以和其他小事放在一起。" : "首页换成了陪伴小窝，这段话目前只在本机。收进记录后，会像其他记录一样随账号同步。")
+                .font(.footnote).foregroundStyle(WriteRightTheme.secondary).lineSpacing(3)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) { legacyActions(note) }
+                VStack(alignment: .leading, spacing: 4) { legacyActions(note) }
+            }
+        }.padding(18).frame(maxWidth: .infinity, alignment: .leading)
+            .background(WriteRightTheme.soft.opacity(0.65), in: RoundedRectangle(cornerRadius: 18))
+            .accessibilityIdentifier("notebook-legacy-note")
+    }
+    @ViewBuilder private func legacyActions(_ note: String) -> some View {
+        Button {
+            let title = note.split(whereSeparator: \.isNewline).first.map { String($0.prefix(120)) } ?? "首页便笺"
+            if app.saveNotebook(NotebookEntry(kind: .note, title: title, note: note)) {
+                LegacyDeskNote.erase(owner: owner); legacyNote = nil
+                withAnimation(animation) { response = "便笺已经收进记录，放在「留下的片刻」里。" }
+            }
+        } label: { Text("收进记录").font(.subheadline.weight(.medium)).frame(minHeight: 44) }
+            .buttonStyle(.plain).foregroundStyle(WriteRightTheme.accent).accessibilityIdentifier("notebook-legacy-keep")
+        Button("不需要了") { confirmLegacyDiscard = true }.font(.subheadline).frame(minHeight: 44)
+            .foregroundStyle(WriteRightTheme.secondary).accessibilityIdentifier("notebook-legacy-discard")
     }
     private var header: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -103,7 +167,7 @@ struct NotebookView: View {
         VStack(alignment: .leading, spacing: 12) {
             Text(!search.isEmpty ? "这一页里，还没找到它。" : filter == "done" ? "没有划下勾，也没有关系。" : filter == "links" ? "把想再看的片刻，留在这里。" : "这一页，等你慢慢填。")
                 .font(.system(.title3, design: .serif))
-            Text(!search.isEmpty ? "换个关键词，或清空搜索再看看。" : filter == "links" ? "点「记下一件事」，选择灵感链接，粘贴整段分享文字就好。" : "可以只记一件小事。完成不是比赛，晚一点也来得及。")
+            Text(!search.isEmpty ? "换个关键词，或清空搜索再看看。" : filter == "links" ? "点「记下一件事」，选择灵感链接，把哔哩哔哩、公众号、小红书或抖音的整段分享文字粘贴进来就好，会按来源自动归好。" : "可以只记一件小事。完成不是比赛，晚一点也来得及。")
                 .font(.subheadline).foregroundStyle(WriteRightTheme.secondary).lineSpacing(5)
         }.padding(24).frame(maxWidth: .infinity, alignment: .leading)
             .background(WriteRightTheme.surface, in: RoundedRectangle(cornerRadius: 20))

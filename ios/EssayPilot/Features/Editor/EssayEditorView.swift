@@ -7,6 +7,7 @@ struct EssayEditorView: View {
     @StateObject private var model: EssayEditorModel
     @State private var topicExpanded: Bool
     @State private var isSubmitting = false
+    @State private var submitError: String?
     private let onPhotos: () -> Void
     private enum Field: Hashable { case title, prompt, requirements, body }
     @FocusState private var focusedField: Field?
@@ -86,6 +87,10 @@ struct EssayEditorView: View {
                             Button("重试") { model.save() }
                         }.foregroundStyle(.red)
                     }
+                    if let submitError {
+                        Text(submitError).font(.footnote).foregroundStyle(.red).frame(maxWidth: .infinity, alignment: .leading)
+                            .fixedSize(horizontal: false, vertical: true).accessibilityIdentifier("submit-error")
+                    }
                     if let reason = submitBlockedReason {
                         Text(reason).font(.footnote).foregroundStyle(.red).frame(maxWidth: .infinity, alignment: .leading)
                             .accessibilityIdentifier("submit-blocked")
@@ -96,11 +101,14 @@ struct EssayEditorView: View {
                     if appModel.canGrade {
                         Button {
                             guard model.save() else { return }
-                            isSubmitting = true
+                            isSubmitting = true; submitError = nil
                             Task {
                                 let job = await appModel.submitGrading(model.document)
                                 isSubmitting = false
-                                if job != nil { dismiss() }
+                                if job != nil { dismiss(); return }
+                                // The app-wide alert sits under this full-screen editor, so failures are shown inline.
+                                submitError = appModel.errorMessage ?? appModel.authErrorMessage ?? "这次未能提交，原稿已保存，可以稍后重试。"
+                                appModel.errorMessage = nil
                             }
                         } label: {
                             Group {

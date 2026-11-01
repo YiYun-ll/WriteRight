@@ -130,7 +130,8 @@ struct SupabaseAuthService: AuthService {
         guard let http = response as? HTTPURLResponse, (200..<300).contains(http.statusCode) else {
             throw AuthServiceError.invalidSession
         }
-        try await client.auth.signOut()
+        // The account is already gone on the server; a failed remote logout must not report the deletion as unfinished.
+        try? await client.auth.signOut()
     }
 }
 

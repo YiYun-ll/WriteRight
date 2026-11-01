@@ -170,7 +170,8 @@ private struct WritingHelpView: View {
             }
             Section("照顾好原稿") {
                 DisclosureGroup("断网后照片和草稿还在吗？") { Text("已保存的草稿在本机。在线批改需要网络；失败时保留原稿和任务，可稍后重试。换手机后仍需要登录同一账号并同步；请先确认重要内容已经同步或导出。") }
-                DisclosureGroup("首页便笺会同步吗？") { Text("口袋便笺只保存在这台设备的当前账号里，不会发送给 AI，也不参与云同步。退出登录会隐藏；删除账号会清理该账号在本机的便笺。") }
+                DisclosureGroup("首页的小猫会怎样长大？") { Text("每天来书桌坐坐、摸摸它、喂小鱼干、一起专注写一会儿，以及收到真实的批改报告，都会让它慢慢长大，一共六个阶段。几天没来不会倒退，也没有连续打卡。来访和陪写记录只保存在这台设备的当前账号里，不发送给 AI，也不参与云同步；删除账号会一并清理。") }
+                DisclosureGroup("以前的首页便笺去哪了？") { Text("首页便笺已换成陪伴小窝。如果你写过便笺，打开「记录」会看到它，可以收进记录或删除；在你选择之前，它一直只留在本机。") }
             }
         }.scrollContentBackground(.hidden).background(WriteRightTheme.background).foregroundStyle(WriteRightTheme.ink)
             .navigationTitle("使用帮助").navigationBarTitleDisplayMode(.inline)

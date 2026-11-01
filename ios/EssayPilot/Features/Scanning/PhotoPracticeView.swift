@@ -172,7 +172,13 @@ struct PhotoPracticeView: View {
         VStack(alignment: .leading, spacing: 24) {
             ReadingProgressView(status: currentJob?.status, stage: currentJob?.stage ?? .evaluate,
                 connectionIssue: model.jobID.flatMap { app.gradingConnectionIssues[$0] },
-                retry: currentJob?.status == .failed ? { if let job = currentJob { Task { await app.retryGrading(job) } } } : nil)
+                retry: currentJob.map { $0.status == .failed || app.gradingConnectionIssues[$0.id] != nil } == true ? {
+                    guard let job = currentJob else { return }
+                    Task {
+                        if job.status == .failed { await app.retryGrading(job) } else { await app.refreshGrading(job) }
+                        if let message = app.errorMessage { model.error = message; app.errorMessage = nil }
+                    }
+                } : nil)
             if let result = app.gradingReports.first(where: { $0.jobID == model.jobID }) {
                 Button("看看这次的建议") { report = result }.buttonStyle(MainActionStyle()).accessibilityIdentifier("photo-open-report")
             }

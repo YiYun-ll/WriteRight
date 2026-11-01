@@ -49,6 +49,22 @@ import SwiftData
         XCTAssertNotNil(try b.notebookChanges().first { $0.entry.id == remote.id }?.entry.deletedAt)
     }
 
+    func testRetriedPushWithSameContentDoesNotCreateACopy() async throws {
+        let first = try SwiftDataWritingRepository(inMemory: true)
+        let retry = try SwiftDataWritingRepository(inMemory: true)
+        let owner = UUID(); let cloud = SyncDirectory()
+        let entry = NotebookEntry(title: "回信要写得具体")
+        try first.saveNotebook(entry)
+        _ = try await AccountSynchronizer.sync(userID: owner, repository: first, transport: cloud)
+        // Same content still dirty at base revision 0, as if the first response never arrived.
+        try retry.saveNotebook(entry)
+        let result = try await AccountSynchronizer.sync(userID: owner, repository: retry, transport: cloud)
+        XCTAssertEqual(result.conflicts, 0)
+        let changes = try retry.notebookChanges()
+        XCTAssertEqual(changes.map(\.entry.title), ["回信要写得具体"])
+        XCTAssertEqual(changes.first?.dirty, false)
+    }
+
     func testLateSyncAcknowledgementDoesNotClearNewerEdit() throws {
         let repo = try SwiftDataWritingRepository(inMemory: true)
         let sent = NotebookEntry(title: "原来的安排")

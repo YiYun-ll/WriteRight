@@ -1,7 +1,7 @@
 import XCTest
 
 final class HomeLayoutTests: XCTestCase {
-    @MainActor func testHomeHasOneRestAreaAndKeepsPrivateNote() {
+    @MainActor func testHomeHasOneRestAreaAndDeskCompanion() {
         verifyHome(large: false)
     }
     @MainActor func testDarkLargeHomeHasNoLegacyRestPanel() {
@@ -15,16 +15,22 @@ final class HomeLayoutTests: XCTestCase {
         let rest = app.buttons["home-rest-mode"]
         XCTAssertTrue(rest.waitForExistence(timeout: 10))
         XCTAssertEqual(app.buttons.matching(identifier: "home-rest-mode").count, 1)
-        let note = app.buttons["home-private-note"]
-        for _ in 0..<30 where !note.isHittable { app.swipeUp() }
-        XCTAssertTrue(note.isHittable)
-        XCTAssertEqual(app.buttons.matching(identifier: "home-private-note").count, 1)
+        XCTAssertFalse(app.buttons["home-private-note"].exists)
         XCTAssertFalse(app.staticTexts["在桌边，歇一小会儿"].exists)
         for id in ["home-moment-water", "home-moment-window", "home-moment-closeBook"] { XCTAssertFalse(app.buttons[id].exists) }
+        let pat = app.buttons["companion-pat"]
+        for _ in 0..<12 where !pat.isHittable { app.swipeUp() }
+        XCTAssertTrue(pat.isHittable)
+        XCTAssertEqual(app.buttons.matching(identifier: "companion-pat").count, 1)
+        XCTAssertLessThanOrEqual(pat.frame.maxX, app.frame.maxX)
+        pat.tap()
+        XCTAssertTrue(app.staticTexts["companion-line"].label.contains("团团"))
         let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
-        shot.name = large ? "home-single-rest-dark-large" : "home-single-rest-private-note"
+        shot.name = large ? "home-companion-dark-large" : "home-companion-light"
         shot.lifetime = .keepAlways; add(shot)
-        note.tap(); XCTAssertTrue(app.textFields["desk-note-text"].waitForExistence(timeout: 5))
-        app.buttons["desk-note-done"].tap()
+        let growth = app.buttons["companion-growth"]
+        XCTAssertTrue(growth.waitForExistence(timeout: 5)); growth.tap()
+        XCTAssertTrue(app.staticTexts["同行到初试"].waitForExistence(timeout: 5))
+        app.buttons["companion-growth-done"].tap()
     }
 }

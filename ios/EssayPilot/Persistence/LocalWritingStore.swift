@@ -297,13 +297,13 @@ enum LocalStoreError: LocalizedError {
         }
     }
 
-    func acknowledgeDraft(id: UUID, revision: Int64, deleted: Bool) throws {
+    func acknowledgeDraft(id: UUID, revision: Int64, deleted: Bool, pushed: DraftDocument?) throws {
         guard let row = try context.fetch(FetchDescriptor<LocalWritingDraft>(predicate: #Predicate { $0.id == id })).first else { return }
         guard row.ownerKey == ownerKey else { throw LocalStoreError.ownerMismatch }
         row.serverRevision = revision
-        row.dirty = false
+        if try pushed.map({ try encoder.encode($0) == row.payload }) ?? true { row.dirty = false }
         if deleted { row.deletedAt = row.deletedAt ?? .now }
-        try context.save()
+        try commit()
     }
 
     func applyRemoteDraft(_ draft: DraftDocument, revision: Int64) throws {
@@ -336,7 +336,7 @@ enum LocalStoreError: LocalizedError {
             inserted.deletedAt = nil
             context.insert(inserted)
         }
-        try context.save()
+        try commit()
     }
 
     func syncCursor() throws -> Int64 {
@@ -351,7 +351,7 @@ enum LocalStoreError: LocalizedError {
         } else {
             context.insert(LocalSyncState(ownerKey: ownerKey, cursor: cursor))
         }
-        try context.save()
+        try commit()
     }
 
     func favoriteChanges() throws -> [FavoriteChange] {
@@ -361,13 +361,13 @@ enum LocalStoreError: LocalizedError {
         }
     }
 
-    func acknowledgeFavorite(id: UUID, revision: Int64, deleted: Bool) throws {
+    func acknowledgeFavorite(id: UUID, revision: Int64, deleted: Bool, pushed: FavoriteDocument?) throws {
         guard let row = try context.fetch(FetchDescriptor<LocalFavorite>(predicate: #Predicate { $0.id == id })).first else { return }
         guard row.ownerKey == ownerKey else { throw LocalStoreError.ownerMismatch }
         row.serverRevision = revision
-        row.dirty = false
+        if try pushed.map({ try encoder.encode($0) == row.payload }) ?? true { row.dirty = false }
         if deleted { row.deletedAt = row.deletedAt ?? .now }
-        try context.save()
+        try commit()
     }
 
     func applyRemoteFavorite(_ favorite: FavoriteDocument, revision: Int64) throws {
@@ -385,26 +385,28 @@ enum LocalStoreError: LocalizedError {
             inserted.dirty = false
             context.insert(inserted)
         }
-        try context.save()
+        try commit()
     }
 
     func keepFavorite(_ favorite: FavoriteDocument) throws {
         let normalized = favorite.normalized
         let owner = ownerKey
         let rows = try context.fetch(FetchDescriptor<LocalFavorite>(predicate: #Predicate { $0.ownerKey == owner }))
-        if let row = rows.first(where: { (try? decoder.decode(FavoriteDocument.self, from: $0.payload).normalized) == normalized }),
+        let matches = rows.filter { (try? decoder.decode(FavoriteDocument.self, from: $0.payload).normalized) == normalized }
+        // A tombstone the server already knows cannot be revived; keeping again starts a new favorite.
+        if let row = matches.first(where: { $0.deletedAt == nil }) ?? matches.first(where: { $0.serverRevision == 0 }),
            let source = favorite.sources.first {
             guard row.ownerKey == ownerKey else { throw LocalStoreError.ownerMismatch }
             let existing = try decoder.decode(FavoriteDocument.self, from: row.payload)
             var merged = existing.merging(meaning: favorite.meaning, usage: favorite.usage, source: source)
-            merged.id = existing.id
+            merged.id = existing.id; merged.deletedAt = nil
             row.payload = try encoder.encode(merged)
             row.deletedAt = nil
             row.dirty = true
         } else {
             context.insert(LocalFavorite(document: favorite, ownerKey: ownerKey, payload: try encoder.encode(favorite)))
         }
-        try context.save()
+        try commit()
     }
 
     func deleteFavorite(id: UUID) throws {
@@ -416,7 +418,7 @@ enum LocalStoreError: LocalizedError {
             favorite.deletedAt = row.deletedAt
             row.payload = try encoder.encode(favorite)
         }
-        try context.save()
+        try commit()
     }
 
     func favorites() throws -> [FavoriteDocument] {
@@ -451,7 +453,7 @@ enum LocalStoreError: LocalizedError {
             stored.deletedAt = stored.deletedAt ?? .now
             row.payload = try encoder.encode(stored); row.dirty = false
         }
-        try context.save()
+        try commit()
     }
     func applyNotebook(_ entry: NotebookEntry, revision: Int64) throws {
         try saveNotebook(entry)
@@ -465,7 +467,12 @@ enum LocalStoreError: LocalizedError {
         let owner = ownerKey
         if let row = try context.fetch(FetchDescriptor<LocalNotebookCursor>(predicate: #Predicate { $0.ownerKey == owner })).first { row.cursor = cursor }
         else { context.insert(LocalNotebookCursor(ownerKey: owner, cursor: cursor)) }
-        try context.save()
+        try commit()
+    }
+
+    /// The shared context has autosave off; a failed save must not leave its changes pending for the next save.
+    private func commit() throws {
+        do { try context.save() } catch { context.rollback(); throw error }
     }
 
     func exportData() throws -> Data {

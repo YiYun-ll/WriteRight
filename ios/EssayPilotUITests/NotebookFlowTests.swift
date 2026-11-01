@@ -52,6 +52,31 @@ final class NotebookFlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["还没有练习"].waitForExistence(timeout: 5))
     }
 
+    @MainActor func testLinksAreShelvedBySourceIncludingBilibiliAndWeChat() {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ui-test-store", UUID().uuidString, "-appearance", "light"]
+        app.launch(); app.tabBars.buttons["记录"].tap()
+        XCTAssertTrue(app.buttons["notebook-add"].waitForExistence(timeout: 8))
+        for share in ["Essay structure https://b23.tv/AbC123x", "Reading list https://mp.weixin.qq.com/s/Xy12AbC", "Another clip https://www.bilibili.com/video/BV1xx411c7mD"] {
+            app.buttons["notebook-add"].tap()
+            let kind = app.buttons["notebook-kind"]
+            XCTAssertTrue(kind.waitForExistence(timeout: 5)); kind.tap(); app.buttons["灵感链接"].tap()
+            let link = app.textFields["notebook-link"]
+            XCTAssertTrue(link.waitForExistence(timeout: 5)); link.tap(); link.typeText(share)
+            app.buttons["notebook-save"].tap()
+            XCTAssertTrue(app.buttons["notebook-add"].waitForExistence(timeout: 5))
+        }
+        app.buttons["notebook-filter"].tap(); app.buttons["灵感链接"].tap()
+        XCTAssertTrue(app.staticTexts["哔哩哔哩 · 2"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["微信公众号 · 1"].exists)
+        let shot = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); shot.name = "notebook-link-sources"; shot.lifetime = .keepAlways; add(shot)
+        app.buttons["notebook-source-微信公众号"].tap()
+        XCTAssertTrue(app.staticTexts["Reading list"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Essay structure"].exists)
+        app.buttons["notebook-source-all"].tap()
+        XCTAssertTrue(app.staticTexts["Essay structure"].waitForExistence(timeout: 5))
+    }
+
     @MainActor func testDarkLargeNotebookHasAccessibleControls() {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-test-store", UUID().uuidString, "-appearance", "dark", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
