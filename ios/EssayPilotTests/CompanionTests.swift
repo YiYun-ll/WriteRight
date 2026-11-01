@@ -79,6 +79,82 @@ import XCTest
         XCTAssertNil(LegacyDeskNote.load(owner: "a", defaults: defaults))
     }
 
+    func testTwoDevicesMergeGrowthWithoutLosingEither() async throws {
+        let user = UUID(), owner = user.uuidString, cloud = SyncDirectory()
+        let phoneDefaults = makeDefaults(), padDefaults = makeDefaults()
+        let phone = CompanionModel(owner: owner, defaults: phoneDefaults, calendar: calendar, now: day(1), deviceID: "phone")
+        phone.recordVisit(now: day(1), reports: 0); phone.pat(now: day(1), reports: 0)
+        phone.startFocus(minutes: 10, now: day(1)); phone.settleFocus(now: day(1, hour: 10), reports: 0)
+        XCTAssertTrue(phone.state.needsUpload)
+        let pad = CompanionModel(owner: owner, defaults: padDefaults, calendar: calendar, now: day(2), deviceID: "pad")
+        pad.recordVisit(now: day(2), reports: 0); pad.treat(now: day(2), reports: 0)
+        pad.startFocus(minutes: 25, now: day(2)); pad.settleFocus(now: day(2, hour: 10), reports: 0)
+        pad.rename("Mochi", now: day(2))
+
+        try await CompanionSync.sync(userID: user, store: CompanionStore(defaults: phoneDefaults), transport: cloud)
+        try await CompanionSync.sync(userID: user, store: CompanionStore(defaults: padDefaults), transport: cloud)
+        let learned = try await CompanionSync.sync(userID: user, store: CompanionStore(defaults: phoneDefaults), transport: cloud)
+        XCTAssertTrue(learned)
+
+        let onPhone = try XCTUnwrap(CompanionStore(defaults: phoneDefaults).load(owner: owner))
+        let onPad = try XCTUnwrap(CompanionStore(defaults: padDefaults).load(owner: owner))
+        XCTAssertEqual(onPhone.growth, onPad.growth)
+        XCTAssertFalse(onPhone.needsUpload)
+        XCTAssertEqual(onPhone.growth.name, "Mochi")
+        XCTAssertEqual(onPhone.growth.metAt, day(1))
+        XCTAssertEqual(onPhone.growth.visitDays.count, 2)
+        XCTAssertEqual(onPhone.growth.totalFocusMinutes, 35)
+        phone.reload()
+        XCTAssertEqual(phone.state.name, "Mochi")
+        XCTAssertEqual(phone.points(reports: 0), 2 * 2 + 1 + 1 + 35 / 5)
+        // Syncing again with nothing new changes nothing.
+        let again = try await CompanionSync.sync(userID: user, store: CompanionStore(defaults: padDefaults), transport: cloud)
+        XCTAssertFalse(again)
+    }
+
+    func testCareGivenWhileTheMergeIsInFlightIsKept() async throws {
+        let user = UUID(), owner = user.uuidString, defaults = makeDefaults()
+        let cat = CompanionModel(owner: owner, defaults: defaults, calendar: calendar, now: day(1), deviceID: "phone")
+        cat.recordVisit(now: day(1), reports: 0)
+        let third = day(3)
+        let transport = MergeHook(); transport.during = { cat.pat(now: third, reports: 0) }
+        try await CompanionSync.sync(userID: user, store: CompanionStore(defaults: defaults), transport: transport)
+        let saved = try XCTUnwrap(CompanionStore(defaults: defaults).load(owner: owner))
+        XCTAssertTrue(saved.growth.patDays.contains("2026-11-03"))
+        XCTAssertTrue(saved.needsUpload)
+    }
+
+    func testServerShapedGrowthDecodesAndMissingFieldsDefault() throws {
+        let full = Data(#"{"name":"Mochi","nameUpdatedAt":500,"metAt":150,"celebratedStage":1,"visitDays":["2026-11-01","2026-11-02"],"patDays":["2026-11-01"],"treatDays":[],"focusMinutes":{"pad":25,"phone":10},"focusSessions":{"pad":1,"phone":1}}"#.utf8)
+        let growth = try JSONDecoder().decode(CompanionGrowth.self, from: full)
+        XCTAssertEqual(growth.name, "Mochi"); XCTAssertEqual(growth.metAt, Date(timeIntervalSinceReferenceDate: 150))
+        XCTAssertEqual(growth.totalFocusMinutes, 35); XCTAssertEqual(growth.celebratedStage, 1)
+        let sparse = try JSONDecoder().decode(CompanionGrowth.self, from: Data(#"{"metAt":900}"#.utf8))
+        XCTAssertEqual(sparse.name, CompanionState.defaultName); XCTAssertNil(sparse.nameUpdatedAt); XCTAssertTrue(sparse.visitDays.isEmpty)
+        // What the app sends: dates as numbers, days as plain strings.
+        let sent = try JSONSerialization.jsonObject(with: JSONEncoder().encode(growth)) as? [String: Any]
+        XCTAssertTrue(sent?["metAt"] is NSNumber)
+        XCTAssertEqual((sent?["visitDays"] as? [String])?.sorted(), ["2026-11-01", "2026-11-02"])
+    }
+
+    func testAccountSyncReloadsTheDeskAndDeletingTheAccountErasesTheCat() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let model = AppModel(authService: CompanionTestAuth(), storeRoot: root, gradingService: UITestGradingService(), syncTransport: SyncDirectory())
+        let defaults = makeDefaults(); model.companionStore = CompanionStore(defaults: defaults)
+        await model.syncCompanion()
+        XCTAssertEqual(model.companionRevision, 0)
+        let loggedIn = await model.verifyCode(email: "a@example.com", code: "123456")
+        XCTAssertTrue(loggedIn)
+        let owner = try XCTUnwrap(model.account?.userID.uuidString)
+        CompanionModel(owner: owner, defaults: defaults, calendar: calendar, now: day(1), deviceID: "phone").recordVisit(now: day(1), reports: 0)
+        await model.syncCompanion()
+        XCTAssertEqual(model.companionRevision, 1)
+        XCTAssertEqual(CompanionStore(defaults: defaults).load(owner: owner)?.needsUpload, false)
+        await model.deleteAccount()
+        XCTAssertNil(CompanionStore(defaults: defaults).load(owner: owner))
+    }
+
     func testVoiceRespondsToDeskStateWithoutGuilt() {
         func line(_ change: (inout CompanionContext) -> Void) -> String {
             var context = CompanionContext(name: "团团", stage: .visitor, hour: 15); change(&context); return CompanionVoice.line(context)
@@ -91,4 +167,32 @@ import XCTest
         let all = [line { _ in }, line { $0.hour = 8 }, line { $0.hour = 21 }, line { $0.returnedAfterDays = 5 }]
         for text in all { XCTAssertFalse(text.contains("想你") || text.contains("难过") || text.contains("打卡")) }
     }
+}
+
+/// Runs a closure between the server merge and the local save, like a tap during a slow request.
+private final class MergeHook: SyncTransport {
+    private let cloud = SyncDirectory()
+    var during: @MainActor () -> Void = {}
+    func push(userID: UUID, op: SyncOperation) async throws -> SyncPushResult { try await cloud.push(userID: userID, op: op) }
+    func pull(userID: UUID, after: Int64) async throws -> [SyncChange] { try await cloud.pull(userID: userID, after: after) }
+    func mergeCompanion(userID: UUID, growth: CompanionGrowth) async throws -> CompanionGrowth {
+        let merged = try await cloud.mergeCompanion(userID: userID, growth: growth)
+        await during()
+        return merged
+    }
+}
+
+private actor CompanionTestAuth: AuthService {
+    private var session: AccountSession?
+    nonisolated var sessionChanges: AsyncStream<AccountSession?> { AsyncStream { _ in } }
+    func currentSession() async throws -> AccountSession? { session }
+    func requestCode(email: String) async throws {}
+    func verifyCode(email: String, code: String) async throws -> AccountSession {
+        let created = AccountSession(userID: UUID(uuidString: "22222222-2222-4222-8222-222222222222")!, email: email)
+        session = created
+        return created
+    }
+    func updateEmail(_ email: String) async throws {}
+    func signOut() async throws { session = nil }
+    func deleteAccount() async throws { session = nil }
 }

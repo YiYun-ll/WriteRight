@@ -170,7 +170,7 @@ private struct WritingHelpView: View {
             }
             Section("照顾好原稿") {
                 DisclosureGroup("断网后照片和草稿还在吗？") { Text("已保存的草稿在本机。在线批改需要网络；失败时保留原稿和任务，可稍后重试。换手机后仍需要登录同一账号并同步；请先确认重要内容已经同步或导出。") }
-                DisclosureGroup("首页的小猫会怎样长大？") { Text("每天来书桌坐坐、摸摸它、喂小鱼干、一起专注写一会儿，以及收到真实的批改报告，都会让它慢慢长大，一共六个阶段。几天没来不会倒退，也没有连续打卡。来访和陪写记录只保存在这台设备的当前账号里，不发送给 AI，也不参与云同步；删除账号会一并清理。") }
+                DisclosureGroup("首页的小猫会怎样长大？") { Text("每天来书桌坐坐、摸摸它、喂小鱼干、一起专注写一会儿，以及收到真实的批改报告，都会让它慢慢长大，一共六个阶段。几天没来不会倒退，也没有连续打卡。登录后，它的名字、来访日期和陪写分钟随账号同步，换手机也会接着长大；两台设备的记录会合在一起，不会互相覆盖。未登录时只留在本机。这些记录不发送给 AI，删除账号会一并清理。") }
                 DisclosureGroup("以前的首页便笺去哪了？") { Text("首页便笺已换成陪伴小窝。如果你写过便笺，打开「记录」会看到它，可以收进记录或删除；在你选择之前，它一直只留在本机。") }
             }
         }.scrollContentBackground(.hidden).background(WriteRightTheme.background).foregroundStyle(WriteRightTheme.ink)
@@ -188,7 +188,7 @@ private struct AboutWriteRightView: View {
                 Text("把想法写清楚，也给自己一点耐心。").font(.system(.title2, design: .serif)).lineSpacing(6)
                 Text("WriteRight 陪你练习考研英语二写作。原稿、建议和每一次重新落笔，都是这本写作本的一部分。")
                     .font(.body).lineSpacing(6)
-                Text("版本 \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.1.0") · \(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1")").font(.footnote).foregroundStyle(WriteRightTheme.secondary)
+                Text("版本 \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "0.2.0") · \(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1")").font(.footnote).foregroundStyle(WriteRightTheme.secondary)
                 Button { unfolded.toggle() } label: { Label("留给翻到这里的你", systemImage: "leaf").frame(minHeight: 44) }.buttonStyle(.plain)
                 if unfolded { GentleNote(text: "谢谢你愿意再写一次。愿这本小小的写作本，能在某个不容易的晚上，让你少一点孤单。") }
             }.padding(28).frame(maxWidth: 620, alignment: .leading).frame(maxWidth: .infinity)

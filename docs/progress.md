@@ -458,4 +458,39 @@
 
 - 冷启动离线时会话恢复失败可能退回游客视图（未复现，待真机验证）；切换账号时拍照页会丢弃尚未保存的相机照片。
 - 旧OCR草稿无法再提交，ScanReviewView/useEssayScan已是无入口代码；同步拉取只取单页200条；收藏的来源句取报告第一处修改句，不一定与表达相关；考试年份写死2026；导出JSON留在临时目录。
-- 小猫成长只存本机，换手机或卸载会重新开始；如需跨设备需新增云表与迁移。
+- ~~小猫成长只存本机~~（已在下一节「第二轮」改为随账号跨设备同步）。
+
+## 2026-11-01 第二轮：温馨书桌重绘、小猫云同步、删除撤销、离线原图
+
+### 实际交付
+
+- 书桌与小猫重绘（原生矢量，用户选定方案）：圆角小房间，含圆点暖墙纸、小彩灯、挂画、木框拱窗与窗帘（远山、软云、太阳/月亮/星星）、木纹桌面、圆顶台灯、爱心马克杯、摊开的本子与铅笔、带小脸的陶土花盆。小猫为大头圆脸、带高光的大眼、腮红、ω嘴、虎斑纹，坐/陪写/睡三种姿态，围巾/铅笔/灯笼/小书包按阶段出现、体型随阶段略长。新增`DeskArt.swift`（等比缩放`DeskSpace`、颜色混合、云/心/星/铅笔），`DeskLightLayer`在小猫之上用正片叠底画夜色、滤色画灯光与彩灯光晕。日落、开关灯、安静/微风/小雨、添茶、照料绿植、心情细节与减少动态效果行为保留；点猫区域改为同一等比换算。
+- 小猫成长跨设备同步：`CompanionGrowth`改为可合并格式（来访/摸头/小鱼干日期集合、按设备的陪写分钟与次数、`nameUpdatedAt`改名时间、最早相识日、最大已庆祝阶段），旧本机数据容错解码。迁移`20261101090000_companion_growth`新增`companion_profiles`表（RLS只读本人，客户端无直接写权限）与`merge_companion(jsonb)`（security definer、行锁、大小/日期/计数/名字校验、并集与取大合并、后写名字胜出）。客户端`CompanionSync`在登录后打开首页、回到前台、手动同步和小猫有新成长时静默上传并与本机最新状态再次合并；失败不打扰，下次再试。游客只留本机；删号仍清理本机（云端行随auth.users级联删除）。卡片隐私说明与帮助页同步改写。
+- 历史/收藏左滑删除提供撤销：`PendingRemoval`立即隐藏、约5秒后才真正删除；离开页面、进入后台、再删下一条时按决定生效，切换账号放弃待删；底部撤销条带语音播报，撤销按钮44点、强调色。采用延迟删除而非删后恢复，避免与正在推送的同步删除竞态。
+- 报告原图离线可看：`ReportPhotoCache`按SHA-256存于`JuGuang/accounts/<uid>/report-photos/`；`gradingPhoto`顺序为缓存→这台设备当初上传的同一份照片（按角色/页序且指纹一致）→联网下载并写缓存。每次读都核对指纹，损坏的缓存不当原图；删号随账号目录清理。
+- 云端部署（用户授权：本地测试通过后应用到EssayPilot-dev，只新增表和函数）：先只读核对云端迁移历史8条，与本地相比只缺`20261101090000`、无云端独有迁移。新增`scripts/apply-companion-cloud-migration.mjs`，沿用记事迁移的做法经CLI HTTPS管理接口原子执行并登记历史（直连Postgres仍ECONNRESET）。回读：历史9条且已登记；表RLS开启、0行；authenticated可执行`merge_companion`、可select、不可insert；anon不可执行/不可读；辅助函数未授权authenticated；函数为security definer；auth.users仍为4个，未改动既有数据。
+
+### 检查与证据
+
+- npm run check通过；npm test 65项通过；npm run test:db 7个文件78项通过（含新增companion_growth 13项：匿名拒绝、首次保存、双设备合并、旧改名不覆盖、过期设备不增减、本人可读、直接写入42501、坏日期/负分钟/空名字拒绝、他人不可见）。git diff --check通过。
+- 全原生91项通过、UI 28项中27项通过1项按设计跳过（需真机账号），LiveAcceptance按惯例排除：artifacts/ios-tests-20261101-143929.xcresult（所有最终代码之后运行）。新增/调整的检查：
+  - CompanionTests：双设备合并不丢、同步在途新增照料保留、服务端形状解码与缺省、账号同步刷新书桌与删号清理。
+  - PhotoPracticeTests：离线时本机上传原图可看、首次下载后缓存可看、损坏缓存被拒；PendingRemoval先隐藏、撤销不删、再删下一条结算上一条、到时删除、离开即生效。
+  - GradingFlowTests（UI）：收藏左滑删除→撤销恢复；历史左滑删除→撤销恢复→再删等待窗口结束后真正消失（空状态出现）。
+  - DeskArtRenderTests：深浅色各5种书桌状态与六阶小猫渲染为附件，逐张查看。
+- 实际查看截图后保存到design/previews：desk-art-day-light/day-dark/night-lamp-dark/rest-night-light/rain-light/breeze-light、cat-stages-light/dark、favorite-undo-bar，并以重绘后画面更新home-companion-light/focus/dark-large、companion-growth、home-rest-day/night、home-rain-night、home-window-rain。首轮截图发现夜色发灰、月亮被云挡、陪写眼神像皱眉、小猫偏小，均已修正后重拍。日志在artifacts/companion-20261101/。
+- 未调用模型、未发邮件、未安装手机、未改套餐。未用真实账号在云端调用`merge_companion`（避免写入用户数据），云端只做结构与权限回读；跨设备效果由本地pgTAP与原生测试证明，需新版本装到两台设备后实测。
+
+### 已知遗留
+
+- 开发者这台 iPhone 18 Pro 已安装 0.2.0，可以开始上传小猫成长；其它仍停在旧包的设备需要装上 0.2.0 后才会上传。游客期间的小猫不会在登录后并入账号（沿用原有按账号隔离）。
+- 原图缓存不设容量上限，只随删号清理；只有看过一次或本机拍摄的原图离线可看，其它设备首次查看仍需联网。
+- 撤销窗口内被隐藏的历史稿件在其它页面（如练习页「继续写」）仍可能短暂出现，窗口结束后一致。
+
+## 2026-11-01 安装 0.2.0 并交付 IPA
+
+- 应用营销版本由 0.1.0 调整为 0.2.0，构建号 1。已连接手机为有线配对的 iPhone 18 Pro（yyyy，iOS 27.2，开发者模式已开）。
+- 签名 Release 构建通过，公开云配置检查通过。devicectl 覆盖安装成功并启动，进程 5731；设备上显示 WriteRight 0.2.0（1）。未卸载、未清数据。证据 artifacts/device-020-20261101-150158/install.json、launch.json。
+- 与这次安装相同的签名包：artifacts/device-020-20261101-150158/WriteRight-0.2.0-1.ipa（4,592,405 字节，SHA-256 `404ddadae6545e6fc862e151abfedc95de54d8175465c54e9ee35946babd1327`）。含本机开发描述文件，供已注册设备重装。
+- 侧载包 artifacts/sideload-20261101-150307/WriteRight-0.2.0-1-sideload.ipa（5,426,937 字节，SHA-256 `4eb8240e3df21f8f84a78b99471948205dcf39bfc20c21850b489d9f90d65c08`）。ZIP 可解、Payload/EssayPilot.app、版本 0.2.0 构建 1、最低 iOS 17.0、Mach-O 平台 IOS、无描述文件/签名目录/私钥；公开云配置检查通过。接收方需自行重签。
+- 安装与启动不代表完整真机相机、多页手写或 VoiceOver 验收。未部署、未调用模型、未改生产数据。P9 不标完成。

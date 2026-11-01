@@ -19,8 +19,13 @@ struct InteractiveDeskView: View {
                          daysToExam: daysToExam, focusing: companion.focusing, returnedAfterDays: companion.returnedAfterDays)
     }
 
-    init(mood: DeskMood, owner: String, reportCount: Int, now: Date, daysToExam: Int) {
+    let companionRevision: Int
+    let companionGrew: () -> Void
+
+    init(mood: DeskMood, owner: String, reportCount: Int, now: Date, daysToExam: Int,
+         companionRevision: Int = 0, companionGrew: @escaping () -> Void = {}) {
         self.mood = mood; self.reportCount = reportCount; self.now = now; self.daysToExam = daysToExam
+        self.companionRevision = companionRevision; self.companionGrew = companionGrew
         _companion = StateObject(wrappedValue: CompanionModel(owner: owner))
     }
 
@@ -33,10 +38,16 @@ struct InteractiveDeskView: View {
                 CompanionPetCanvas(pose: companion.pose(resting: desk.resting, reports: reportCount),
                                    stage: companion.stage(reports: reportCount), night: night, bounce: companion.bounce)
                     .animation(canAnimate ? .easeOut(duration: 0.7) : nil, value: companion.bounce)
+                DeskLightLayer(sunsetProgress: desk.sunsetProgress, lampGlow: desk.lampGlow)
+                    .animation(canAnimate ? .easeInOut(duration: desk.motionDuration) : nil, value: desk.motionRevision)
             }
             .frame(height: 170)
-            .overlay { GeometryReader { geo in petButton.frame(width: geo.size.width * 70 / 360, height: geo.size.height * 62 / 156)
-                .position(x: geo.size.width * 238 / 360, y: geo.size.height * 106 / 156) } }
+            .overlay { GeometryReader { geo in
+                let space = DeskSpace(geo.size)
+                let feet = CompanionPetCanvas.deskAnchor
+                petButton.frame(width: 80 * space.scale, height: 76 * space.scale)
+                    .position(space.point(CGPoint(x: feet.x, y: feet.y - 36)))
+            } }
             HStack(alignment: .top, spacing: 16) {
                 Text(desk.caption(mood: mood)).id(desk.caption(mood: mood))
                     .font(.system(.subheadline, design: .serif)).foregroundStyle(WriteRightTheme.secondary)
@@ -68,6 +79,8 @@ struct InteractiveDeskView: View {
         .onChange(of: reportCount) { _, count in companion.celebrateIfGrown(reports: count) }
         .onChange(of: desk.motionRevision) { _, _ in companion.clearResponse() }
         .onChange(of: mood) { _, _ in companion.clearResponse() }
+        .onChange(of: companionRevision) { _, _ in companion.reload() }
+        .onChange(of: companion.state.needsUpload) { _, pending in if pending { companionGrew() } }
     }
     private var petButton: some View {
         Button { companion.pat(reports: reportCount) } label: { Color.clear.contentShape(Rectangle()) }

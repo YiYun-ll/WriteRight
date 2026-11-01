@@ -54,6 +54,54 @@ import XCTest
         XCTAssertNotNil(resumed.image(try XCTUnwrap(resumed.essayPages.first)))
         XCTAssertEqual(resumed.essayPages.first?.rawText, "")
     }
+    func testReportOriginalsOpenOfflineFromThisDeviceOrTheCache() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let online = await app(root); let model = PhotoPracticeModel(app: online)
+        await model.add([try XCTUnwrap(UIImage(data: ScanSampleImage.jpeg(text: "Task page.")))], role: .task)
+        await model.add([try XCTUnwrap(UIImage(data: ScanSampleImage.jpeg(text: "Essay page.")))], role: .essay)
+        await model.submit(); model.cancel()
+        let sources = try XCTUnwrap(online.gradingReports.first?.report.photoReview?.sources)
+        let task = try XCTUnwrap(sources.first { $0.role == "task" }), essay = try XCTUnwrap(sources.first { $0.role == "essay" })
+        // The essay's local upload is gone, so the first view downloads it and keeps a copy.
+        let essayUpload = try XCTUnwrap(online.submissions.first?.essayPages?.first?.uploadRelativePath)
+        try FileManager.default.removeItem(at: XCTUnwrap(online.scanImageStore().url(essayUpload)))
+        let downloaded = try await online.gradingPhoto(essay)
+        XCTAssertEqual(ContentFingerprint.hash(downloaded), essay.checksum)
+
+        // A grading service that has nothing stands in for being offline.
+        let offline = AppModel(authService: PhotoAuthStub(), storeRoot: root, gradingService: UITestGradingService())
+        _ = await offline.verifyCode(email: "photo@example.com", code: "123456")
+        let cachedEssay = try await offline.gradingPhoto(essay)
+        XCTAssertEqual(cachedEssay, downloaded)
+        let localTask = try await offline.gradingPhoto(task)
+        XCTAssertEqual(ContentFingerprint.hash(localTask), task.checksum)
+
+        // A damaged cached file is never shown as the original.
+        let cacheFile = root.appendingPathComponent("JuGuang/accounts/11111111-1111-4111-8111-111111111111/report-photos/\(essay.checksum).jpg")
+        try Data("not the photo".utf8).write(to: cacheFile)
+        do { _ = try await offline.gradingPhoto(essay); XCTFail("Expected the damaged copy to be rejected") } catch {}
+    }
+
+    func testSwipedRowsHideFirstAndOnlyDeleteWhenTheUndoWindowCloses() async throws {
+        let removal = PendingRemoval(window: .milliseconds(50))
+        var deleted: [UUID] = []
+        let first = UUID(), second = UUID()
+        removal.remove(id: first, message: "已删除") { deleted.append(first) }
+        XCTAssertTrue(removal.hides(first))
+        removal.undo()
+        XCTAssertFalse(removal.hides(first)); XCTAssertEqual(deleted, [])
+        removal.remove(id: first, message: "已删除") { deleted.append(first) }
+        removal.remove(id: second, message: "已删除") { deleted.append(second) }
+        XCTAssertEqual(deleted, [first], "a second swipe settles the first")
+        XCTAssertTrue(removal.hides(second))
+        try await Task.sleep(for: .milliseconds(300))
+        XCTAssertEqual(deleted, [first, second]); XCTAssertNil(removal.item)
+        removal.remove(id: first, message: "已删除") { deleted.append(first) }
+        removal.finish()
+        XCTAssertEqual(deleted, [first, second, first], "leaving the screen keeps the decision")
+    }
+
     func testAccountSwitchBlocksPhotosFromSavingToAnotherAccount() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

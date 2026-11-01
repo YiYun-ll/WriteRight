@@ -116,7 +116,7 @@ struct CompanionGrowthView: View {
                 VStack(alignment: .leading, spacing: 28) {
                     VStack(spacing: 12) {
                         CompanionPetCanvas(pose: .sitting, stage: stage, night: false, bounce: companion.bounce,
-                                           anchor: CGPoint(x: 60, y: 66), canvasSize: CGSize(width: 120, height: 72))
+                                           anchor: CGPoint(x: 60, y: 74), canvasSize: CGSize(width: 120, height: 80))
                             .frame(height: 150).frame(maxWidth: .infinity)
                         Text(companion.state.name).font(.system(.title, design: .serif))
                         Text("第 \(stage.rawValue + 1) 阶 · \(stage.title) · \(points) 点").font(.subheadline).foregroundStyle(WriteRightTheme.secondary)
@@ -136,7 +136,7 @@ struct CompanionGrowthView: View {
                         rule("陪写每 \(CompanionState.Rule.focusMinutesPerPoint) 分钟", "+1")
                         rule("每收到一份批改报告", "+\(CompanionState.Rule.report)")
                     }
-                    Text("\(companion.state.name)不会因为你几天没来而难过，成长也不会倒退；它只记得你来过。来访和陪写记录只保存在这台设备的当前账号里，不发送给 AI，也不参与云同步。")
+                    Text("\(companion.state.name)不会因为你几天没来而难过，成长也不会倒退；它只记得你来过。登录后，名字、来访日期和陪写分钟会随账号同步，换手机也能接着长大；未登录时只留在这台设备上。这些记录不发送给 AI。")
                         .font(.footnote).foregroundStyle(WriteRightTheme.secondary).lineSpacing(4)
                 }.padding(24)
             }

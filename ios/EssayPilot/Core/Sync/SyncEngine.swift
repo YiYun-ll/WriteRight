@@ -26,6 +26,8 @@ enum SyncPushResult: Equatable, Sendable {
 protocol SyncTransport {
     func push(userID: UUID, op: SyncOperation) async throws -> SyncPushResult
     func pull(userID: UUID, after: Int64) async throws -> [SyncChange]
+    /// Merges this device's cat into the account's copy and returns the combined growth.
+    func mergeCompanion(userID: UUID, growth: CompanionGrowth) async throws -> CompanionGrowth
 }
 
 enum SyncCoding {
@@ -51,9 +53,15 @@ final class SyncDirectory: SyncTransport {
     private var heads: [String: Head] = [:]
     private var log: [Head] = []
     private var nextRevision: Int64 = 1
+    private var companions: [UUID: CompanionGrowth] = [:]
 
     func push(userID: UUID, op: SyncOperation) async throws -> SyncPushResult { push(userID, op) }
     func pull(userID: UUID, after: Int64) async throws -> [SyncChange] { pull(userID, after) }
+    func mergeCompanion(userID: UUID, growth: CompanionGrowth) async throws -> CompanionGrowth {
+        let merged = companions[userID].map { $0.merged(with: growth) } ?? growth
+        companions[userID] = merged
+        return merged
+    }
 
     func push(_ userID: UUID, _ op: SyncOperation) -> SyncPushResult {
         let key = Self.key(userID, op.entityType, op.entityID)

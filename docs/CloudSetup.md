@@ -121,3 +121,7 @@ Mac只读对比中，配置的代理路径可到达Auth健康接口（未带apik
 ## 2026-10-31 已授权开发云更新
 
 EssayPilot-dev已应用20261031010000_notebook_sync迁移并发布submit-grading、submit-photo-grading和grading-worker，新报告提供句式/篇章建议及独立双语示范，记录可按账号同步。未修改套餐、账单或已有用户内容。原始题图/作文图仍一起直批，无转录步骤。部署、兼容与回退边界见NotebookAndLearning.md；实际23项真实云验收及本地测试见progress.md。旧版客户端与旧报告保持兼容，新学习内容仅新批改生成。
+
+## 2026-11-01 已授权开发云更新（小猫成长同步）
+
+EssayPilot-dev已应用20261101090000_companion_growth：新增companion_profiles表（RLS只读本人）与merge_companion(jsonb)合并函数，只新增表和函数，未改已有数据、函数、套餐或账单。脚本scripts/apply-companion-cloud-migration.mjs需显式--apply --project-ref且与已关联项目一致，迁移与历史登记在同一事务、重复执行无副作用。回读结果与本地pgTAP见progress.md。旧版客户端不调用该函数，行为不变。

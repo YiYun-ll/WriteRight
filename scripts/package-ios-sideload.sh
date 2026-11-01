@@ -4,7 +4,7 @@ set -euo pipefail
 # Build a device Release app for the recipient's sideloader to sign.
 # This never exports a certificate or changes the installed development app.
 task_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-task_build="${1:-8}"
+task_build="${1:-1}"
 if ! [[ "$task_build" =~ ^[1-9][0-9]*$ ]]; then
   printf 'Build number must be a positive integer.\n' >&2
   exit 1
@@ -35,7 +35,8 @@ ditto --norsrc --noextattr "$task_app" "$task_stage/Payload/EssayPilot.app"
 # Remove signing remnants from the copy only. The recipient signs it locally.
 find "$task_stage" -type d -name _CodeSignature -prune -exec rm -rf {} +
 find "$task_stage" -name embedded.mobileprovision -type f -delete
-task_ipa="$task_output/WriteRight-0.1.0-$task_build-sideload.ipa"
+task_version="$(/usr/bin/plutil -extract CFBundleShortVersionString raw -o - "$task_app/Info.plist")"
+task_ipa="$task_output/WriteRight-${task_version}-${task_build}-sideload.ipa"
 ditto -c -k --norsrc --noextattr --keepParent "$task_stage/Payload" "$task_ipa"
 unzip -tq "$task_ipa"
 (cd "$task_output" && shasum -a 256 "$(basename "$task_ipa")" > "$(basename "$task_ipa").sha256")
