@@ -113,6 +113,83 @@ import XCTest
         XCTAssertNotNil(model.errorMessage)
     }
 
+    func testEditsMadeWhileAPushIsInFlightStayDirty() throws {
+        let repository = try SwiftDataWritingRepository(inMemory: true)
+        var draft = DraftDocument(id: UUID(), task: .empty(part: .a), body: "Pushed text.", source: "typed", transcriptionConfirmed: true, createdAt: .now, updatedAt: .now)
+        try repository.save(draft)
+        let pushed = try XCTUnwrap(repository.draftChanges().first).draft
+        draft.body = "Typed while syncing."; try repository.save(draft)
+        try repository.acknowledgeDraft(id: draft.id, revision: 3, deleted: false, pushed: pushed)
+        var change = try XCTUnwrap(repository.draftChanges().first)
+        XCTAssertTrue(change.dirty); XCTAssertEqual(change.baseRevision, 3); XCTAssertEqual(change.draft.body, "Typed while syncing.")
+        try repository.acknowledgeDraft(id: draft.id, revision: 4, deleted: false, pushed: change.draft)
+        change = try XCTUnwrap(repository.draftChanges().first)
+        XCTAssertFalse(change.dirty)
+
+        let favorite = FavoriteDocument.make(expression: "keep going", meaning: "", usage: "", reportID: UUID(), sentence: "")
+        try repository.keepFavorite(favorite)
+        let pushedFavorite = try XCTUnwrap(repository.favoriteChanges().first).favorite
+        try repository.keepFavorite(.make(expression: "Keep going", meaning: "继续", usage: "", reportID: UUID(), sentence: ""))
+        try repository.acknowledgeFavorite(id: favorite.id, revision: 2, deleted: false, pushed: pushedFavorite)
+        XCTAssertTrue(try XCTUnwrap(repository.favoriteChanges().first).dirty)
+    }
+
+    func testKeepingAgainAfterASyncedDeleteStartsANewFavorite() throws {
+        let repository = try SwiftDataWritingRepository(inMemory: true)
+        let app = AppModel(repository: repository)
+        let submission = SubmissionDocument(id: UUID(), draftID: UUID(), task: .empty(part: .a), originalText: "Example.", wordCount: 1, contentHash: "x", sentences: [], submittedAt: .now)
+        let result = report(submission: submission, part: .a, score: 7, rubric: "A")
+        let expression = ReviewExpression(expression: "Be useful for", meaning: "对……有用", usage: "")
+        app.keep(expression: expression, report: result)
+        let first = try XCTUnwrap(app.favorites.first)
+        // Unsynced delete then keep: same favorite comes back and reads as kept.
+        app.deleteFavorite(id: first.id); app.keep(expression: expression, report: result)
+        XCTAssertEqual(app.favorites.map(\.id), [first.id]); XCTAssertTrue(app.isKept(expression: expression.expression))
+        // Synced delete leaves a server tombstone; keeping again must not reuse its ID.
+        try repository.acknowledgeFavorite(id: first.id, revision: 1, deleted: false)
+        app.deleteFavorite(id: first.id)
+        try repository.acknowledgeFavorite(id: first.id, revision: 2, deleted: true)
+        app.keep(expression: expression, report: result)
+        let kept = try XCTUnwrap(app.favorites.first)
+        XCTAssertNotEqual(kept.id, first.id); XCTAssertEqual(app.favorites.count, 1)
+        XCTAssertTrue(app.isKept(expression: expression.expression))
+        app.keep(expression: expression, report: result)
+        XCTAssertEqual(app.favorites.count, 1)
+    }
+
+    func testOverlappingSyncRequestsDoNotCreateConflictCopies() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let model = AppModel(authService: SyncTestAuth(), storeRoot: root, gradingService: UITestGradingService(), syncTransport: SyncDirectory())
+        let loggedIn = await model.verifyCode(email: "a@example.com", code: "123456")
+        XCTAssertTrue(loggedIn)
+        XCTAssertTrue(model.saveNotebook(NotebookEntry(title: "Read one page")))
+        async let first: Void = model.syncNow()
+        async let second: Void = model.syncNow()
+        _ = await (first, second)
+        XCTAssertEqual(model.notebook.map(\.title), ["Read one page"])
+        XCTAssertEqual(model.syncState, "已同步")
+    }
+
+    func testGuestPhotoDraftKeepsItsImagesWhenMovedIntoAnAccount() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let model = AppModel(authService: SyncTestAuth(), storeRoot: root, gradingService: UITestGradingService(), syncTransport: SyncDirectory())
+        let guestStore = try model.scanImageStore()
+        let pageID = UUID()
+        let path = try guestStore.save(data: Data([0xFF, 0xD8, 0xFF, 0xD9]), id: pageID)
+        let page = ScanPageDocument(id: pageID, relativePath: path, rawText: "", correctedText: "", lines: [], confirmed: false, transcriptionSource: "direct_photo")
+        let draft = DraftDocument(id: UUID(), task: .empty(part: .a), body: "", source: "photos", transcriptionConfirmed: false, createdAt: .now, updatedAt: .now, pages: [page])
+        try model.repository?.save(draft); model.refresh()
+        let loggedIn = await model.verifyCode(email: "a@example.com", code: "123456")
+        XCTAssertTrue(loggedIn)
+        model.migrateGuestDrafts()
+        XCTAssertEqual(model.drafts.first?.id, draft.id)
+        let accountURL = try XCTUnwrap(model.scanImageStore().url(path))
+        XCTAssertEqual(try Data(contentsOf: accountURL), Data([0xFF, 0xD8, 0xFF, 0xD9]))
+        XCTAssertNotEqual(accountURL, guestStore.url(path))
+    }
+
     private func report(submission: SubmissionDocument, part: WritingPart, score: Double, rubric: String) -> GradingReportDocument {
         let payload = GradingReportPayload(
             schemaVersion: "1", part: part, gradingMode: "full",

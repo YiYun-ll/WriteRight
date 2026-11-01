@@ -35,8 +35,11 @@ final class WritingFlowTests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-ui-test-store", UUID().uuidString, "-appearance", "dark", "-ui-test-today", "2026-12-19", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
         app.launch()
+        XCTAssertTrue(app.staticTexts["brand-wordmark"].waitForExistence(timeout: 10))
+        // At accessibility sizes the desk and the cat fill several screens; the home stack is lazy.
         let countdown = app.descendants(matching: .any)["exam-countdown"]
-        XCTAssertTrue(countdown.waitForExistence(timeout: 10))
+        for _ in 0..<8 where !countdown.exists { app.swipeUp() }
+        XCTAssertTrue(countdown.waitForExistence(timeout: 5))
         XCTAssertTrue(countdown.label.contains("今天"))
         XCTAssertTrue(countdown.label.contains("2026年12月19日"))
         XCTAssertTrue(countdown.label.contains("初试这一天"))
@@ -46,10 +49,11 @@ final class WritingFlowTests: XCTestCase {
         attachment.name = "Dark accessible home"; attachment.lifetime = .keepAlways
         add(attachment)
         app.tabBars.buttons["练习"].tap()
-        XCTAssertTrue(app.buttons["new-part-A"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["new-part-B"].exists)
-        app.swipeUp()
-        app.buttons["new-part-B"].tap()
+        let partA = app.buttons["new-part-A"], partB = app.buttons["new-part-B"]
+        for _ in 0..<4 where !partA.waitForExistence(timeout: 2) { app.swipeUp() }
+        XCTAssertTrue(partA.exists)
+        for _ in 0..<4 where !(partB.exists && partB.isHittable) { app.swipeUp() }
+        partB.tap()
         XCTAssertTrue(app.navigationBars["大作文"].waitForExistence(timeout: 5))
     }
 

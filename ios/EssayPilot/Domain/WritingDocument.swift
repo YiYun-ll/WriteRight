@@ -98,12 +98,13 @@ protocol WritingRepository: AnyObject {
     func notebookCursor() throws -> Int64
     func setNotebookCursor(_ cursor: Int64) throws
     func draftChanges() throws -> [DraftChange]
-    func acknowledgeDraft(id: UUID, revision: Int64, deleted: Bool) throws
+    /// `pushed` is the payload that was sent; edits made while the push was in flight keep the row dirty.
+    func acknowledgeDraft(id: UUID, revision: Int64, deleted: Bool, pushed: DraftDocument?) throws
     func applyRemoteDraft(_ draft: DraftDocument, revision: Int64) throws
     func syncCursor() throws -> Int64
     func setSyncCursor(_ cursor: Int64) throws
     func favoriteChanges() throws -> [FavoriteChange]
-    func acknowledgeFavorite(id: UUID, revision: Int64, deleted: Bool) throws
+    func acknowledgeFavorite(id: UUID, revision: Int64, deleted: Bool, pushed: FavoriteDocument?) throws
     func applyRemoteFavorite(_ favorite: FavoriteDocument, revision: Int64) throws
     func keepFavorite(_ favorite: FavoriteDocument) throws
     func deleteFavorite(id: UUID) throws
@@ -119,12 +120,14 @@ extension WritingRepository {
     func setNotebookCursor(_ cursor: Int64) throws {}
 
     func draftChanges() throws -> [DraftChange] { [] }
-    func acknowledgeDraft(id: UUID, revision: Int64, deleted: Bool) throws {}
+    func acknowledgeDraft(id: UUID, revision: Int64, deleted: Bool, pushed: DraftDocument?) throws {}
+    func acknowledgeDraft(id: UUID, revision: Int64, deleted: Bool) throws { try acknowledgeDraft(id: id, revision: revision, deleted: deleted, pushed: nil) }
     func applyRemoteDraft(_ draft: DraftDocument, revision: Int64) throws {}
     func syncCursor() throws -> Int64 { 0 }
     func setSyncCursor(_ cursor: Int64) throws {}
     func favoriteChanges() throws -> [FavoriteChange] { [] }
-    func acknowledgeFavorite(id: UUID, revision: Int64, deleted: Bool) throws {}
+    func acknowledgeFavorite(id: UUID, revision: Int64, deleted: Bool, pushed: FavoriteDocument?) throws {}
+    func acknowledgeFavorite(id: UUID, revision: Int64, deleted: Bool) throws { try acknowledgeFavorite(id: id, revision: revision, deleted: deleted, pushed: nil) }
     func applyRemoteFavorite(_ favorite: FavoriteDocument, revision: Int64) throws {}
     func keepFavorite(_ favorite: FavoriteDocument) throws {}
     func deleteFavorite(id: UUID) throws {}

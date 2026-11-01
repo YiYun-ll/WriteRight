@@ -112,7 +112,7 @@ import Foundation
         isAuthBusy = true
         defer { isAuthBusy = false }
         do {
-            let session = try await authService.verifyCode(email: email, code: code)
+            let session = try await authService.verifyCode(email: email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), code: code)
             activate(session)
             authErrorMessage = nil
             return true
@@ -197,7 +197,17 @@ import Foundation
             let guest = try makeRepository(account: nil)
             let documents = try guest.drafts()
             let existingIDs = Set(drafts.map(\.id))
+            let root = try storeRoot ?? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+            let guestImages = ScanImageStore(root: root.appendingPathComponent("JuGuang/local/images"))
+            let accountImages = try scanImageStore()
             for document in documents where !existingIDs.contains(document.id) {
+                // Photo drafts point at images by file name; copy them before the draft can resolve against the account folder.
+                let pages = (document.pages ?? []) + (document.task.sourcePages ?? [])
+                for path in pages.flatMap({ [$0.relativePath] + ($0.uploadRelativePath.map { [$0] } ?? []) }) {
+                    guard let source = guestImages.url(path), let target = accountImages.url(path),
+                          FileManager.default.fileExists(atPath: source.path), !FileManager.default.fileExists(atPath: target.path) else { continue }
+                    _ = try accountImages.save(data: Data(contentsOf: source), id: UUID(uuidString: String(path.dropLast(4)))!)
+                }
                 try repository?.save(document)
             }
             for document in documents { try guest.deleteDraft(id: document.id) }
@@ -207,7 +217,8 @@ import Foundation
     }
 
     func openStore() {
-        repository = nil; drafts = []; submissions = []; gradingJobs = []; gradingReports = []; gradingConnectionIssues = [:]; isReady = false
+        repository = nil; drafts = []; submissions = []; gradingJobs = []; gradingReports = []; gradingConnectionIssues = [:]
+        notebook = []; favorites = []; isReady = false
         do {
             repository = try makeRepository(account: account)
             try reload(); isReady = true; errorMessage = nil
@@ -226,6 +237,7 @@ import Foundation
         nicknameTask?.cancel(); nicknameRevision = UUID()
         nickname = session.flatMap { nicknameCache.load($0.userID) }
         isNicknameLoading = false; isNicknameSaving = false; nicknameError = nil
+        syncState = "未同步"
         account = session
         openStore()
         if session != nil { nicknameTask = Task { [weak self] in await self?.refreshNickname() } }
@@ -330,6 +342,7 @@ import Foundation
             guard response.jobId == job.id else { throw GradingServiceError.invalidResponse }
             try apply(response, submissionID: job.submissionID)
             gradingConnectionIssues.removeValue(forKey: job.id)
+            if response.status == .queued || response.status == .running { startPolling(job.id) }
         } catch {
             if account?.userID == ownerID {
                 gradingConnectionIssues[job.id] = "暂时无法更新进度，任务已保留。"
@@ -403,11 +416,12 @@ import Foundation
         let ownerID = account?.userID
         pollingTasks[jobID] = Task { [weak self] in
             defer { self?.pollingTasks[jobID] = nil }
-            for _ in 0..<120 {
+            // Quick checks for the first two minutes, then gentler ones for long queues (about 40 minutes in total).
+            for attempt in 0..<300 {
                 guard let self, self.account?.userID == ownerID,
                       let job = self.gradingJobs.first(where: { $0.id == jobID }) else { return }
                 if job.status == .completed || job.status == .failed { return }
-                do { try await Task.sleep(for: .seconds(2)) } catch { return }
+                do { try await Task.sleep(for: .seconds(attempt < 60 ? 2 : 10)) } catch { return }
                 await self.refreshGrading(job)
             }
         }
@@ -583,24 +597,35 @@ import Foundation
         return result
     }
 
+    private var syncTask: (owner: UUID, task: Task<Void, Never>)?
+    /// Pull-to-refresh and the sync button can fire together; a second call joins the running sync
+    /// instead of pushing the same base revision twice and manufacturing conflict copies.
     func syncNow() async {
         guard let userID = account?.userID, let repository else {
             syncState = "登录后同步"
             return
         }
+        if let running = syncTask, running.owner == userID { await running.task.value; return }
         let transport = syncTransport ?? SupabaseSyncTransport(accessToken: { [authService] in
             guard let service = authService as? SupabaseAuthService else { throw SyncTransportError.unavailable }
             return try await service.client.auth.session.accessToken
         })
         syncState = "正在同步"
-        do {
-            let summary = try await AccountSynchronizer.sync(userID: userID, repository: repository, transport: transport)
-            try reload()
-            syncState = summary.conflicts > 0 ? "有冲突副本" : "已同步"
-        } catch {
-            syncState = "同步失败"
-            errorMessage = "同步未完成。本机内容已保留，请重试。"
+        let task = Task { [weak self] in
+            do {
+                let summary = try await AccountSynchronizer.sync(userID: userID, repository: repository, transport: transport)
+                guard let self, self.account?.userID == userID else { return }
+                try self.reload()
+                self.syncState = summary.conflicts > 0 ? "有冲突副本" : "已同步"
+            } catch {
+                guard let self, self.account?.userID == userID else { return }
+                self.syncState = "同步失败"
+                self.errorMessage = "同步未完成。本机内容已保留，请重试。"
+            }
         }
+        syncTask = (userID, task)
+        await task.value
+        if syncTask?.owner == userID { syncTask = nil }
     }
 
     @discardableResult func saveNotebook(_ entry: NotebookEntry) -> Bool {
@@ -644,14 +669,23 @@ import Foundation
     func deleteAccount() async {
         guard account != nil, let authService else { return }
         let removed = account
+        // Deleting signs out; that session change is expected, not an expired login.
+        isSigningOut = true
+        defer { isSigningOut = false }
         do {
             try await authService.deleteAccount()
-            if let removed { try removeAccountFiles(removed); DeskCompanionModel.erase(owner: removed.userID.uuidString); nicknameCache.erase(removed.userID) }
-            activate(nil)
-            syncState = "未同步"
         } catch {
             errorMessage = "账号删除未完成。本机数据仍在，请重试。"
+            return
         }
+        // Close the account's store before removing its files.
+        activate(nil)
+        syncState = "未同步"
+        guard let removed else { return }
+        CompanionModel.erase(owner: removed.userID.uuidString); LegacyDeskNote.erase(owner: removed.userID.uuidString)
+        nicknameCache.erase(removed.userID)
+        do { try removeAccountFiles(removed) }
+        catch { errorMessage = "账号已删除，但这台设备上的部分本机文件未能清理。可以稍后删除 App 来彻底清除。" }
     }
 
     private func removeAccountFiles(_ account: AccountSession) throws {

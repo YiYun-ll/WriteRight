@@ -117,7 +117,10 @@ import UIKit
         guard !essayPages.isEmpty, let draft = saveDraft() else { return }
         isSubmitting = true; defer { isSubmitting = false }
         jobID = await app.submitPhotoGrading(draft)?.id
-        if jobID == nil { error = app.errorMessage ?? "这次未能提交，照片已保存，可以稍后继续。" }
+        if jobID == nil {
+            // Shown here; leaving it on the app would pop the same alert again after this page closes.
+            error = app.errorMessage ?? "这次未能提交，照片已保存，可以稍后继续。"; app.errorMessage = nil
+        }
     }
     func cancel() {
         operation?.cancel()

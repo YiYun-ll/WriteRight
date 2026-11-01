@@ -131,7 +131,7 @@ struct SyncSummary: Equatable {
             ))
             switch result {
             case .applied(let revision, _):
-                try repository.acknowledgeFavorite(id: change.favorite.id, revision: revision, deleted: change.deleted)
+                try repository.acknowledgeFavorite(id: change.favorite.id, revision: revision, deleted: change.deleted, pushed: change.deleted ? nil : change.favorite)
                 applied += 1
             case .deleted:
                 try repository.acknowledgeFavorite(id: change.favorite.id, revision: change.baseRevision, deleted: true)
@@ -205,6 +205,12 @@ struct SyncSummary: Equatable {
             case .applied(let revision, _): try repository.acknowledgeNotebook(entry, revision: revision, deleted: entry.deletedAt != nil)
             case .deleted: try repository.acknowledgeNotebook(entry, revision: change.revision, deleted: true)
             case .conflict(let server):
+                let remote = try? decoder.decode(NotebookEntry.self, from: server.payload)
+                // A retried push whose first response was lost comes back as a conflict carrying our own content.
+                if let remote, remote == (try? decoder.decode(NotebookEntry.self, from: encoder.encode(entry))) {
+                    try repository.acknowledgeNotebook(entry, revision: server.revision, deleted: entry.deletedAt != nil)
+                    continue
+                }
                 // Keep an edited copy instead of silently discarding someone's note.
                 if entry.deletedAt == nil {
                     var copy = entry; copy.id = newID(); copy.title += "（另一份记录）"
@@ -212,7 +218,7 @@ struct SyncSummary: Equatable {
                     let pushed = try await transport.push(userID: userID, op: SyncOperation(entityType: "record", entityID: copy.id, operation: "upsert", baseRevision: 0, payload: try encoder.encode(copy)))
                     if case .applied(let revision, _) = pushed { try repository.acknowledgeNotebook(copy, revision: revision, deleted: false) }
                 }
-                if let remote = try? decoder.decode(NotebookEntry.self, from: server.payload) { try repository.applyNotebook(remote, revision: server.revision) }
+                if let remote { try repository.applyNotebook(remote, revision: server.revision) }
                 conflicts += 1
             }
         }
@@ -242,7 +248,7 @@ struct SyncSummary: Equatable {
     ) async throws -> Outcome {
         switch result {
         case .applied(let revision, _):
-            try repository.acknowledgeDraft(id: change.draft.id, revision: revision, deleted: change.deleted)
+            try repository.acknowledgeDraft(id: change.draft.id, revision: revision, deleted: change.deleted, pushed: change.deleted ? nil : change.draft)
             return Outcome(conflicts: 0, applied: 1)
         case .deleted:
             if !change.deleted, differsFromDeleted(change) {

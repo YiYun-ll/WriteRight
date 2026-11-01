@@ -2,17 +2,41 @@ import SwiftUI
 
 struct InteractiveDeskView: View {
     let mood: DeskMood
+    let reportCount: Int
+    let now: Date
+    let daysToExam: Int
     @StateObject private var desk = HomeDeskModel()
+    @StateObject private var companion: CompanionModel
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.scenePhase) private var scenePhase
     private var canAnimate: Bool { !reduceMotion && scenePhase == .active }
+    private var hour: Int { Calendar.current.component(.hour, from: now) }
+    private var night: Bool { desk.resting || hour >= 19 || hour < 5 }
+    private var companionContext: CompanionContext {
+        CompanionContext(name: companion.state.name, stage: companion.stage(reports: reportCount), hour: hour,
+                         resting: desk.resting, lampOn: desk.lampOn, raining: desk.window == .rain, mood: mood,
+                         daysToExam: daysToExam, focusing: companion.focusing, returnedAfterDays: companion.returnedAfterDays)
+    }
+
+    init(mood: DeskMood, owner: String, reportCount: Int, now: Date, daysToExam: Int) {
+        self.mood = mood; self.reportCount = reportCount; self.now = now; self.daysToExam = daysToExam
+        _companion = StateObject(wrappedValue: CompanionModel(owner: owner))
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            QuietDeskScene(mood: mood, sunsetProgress: desk.sunsetProgress,
-                           window: desk.window, windowMotion: desk.windowMotion, teaLift: desk.teaLift, plantPulse: desk.plantPulse, lampGlow: desk.lampGlow)
-                .frame(height: 170)
-                .animation(canAnimate ? .easeInOut(duration: desk.motionDuration) : nil, value: desk.motionRevision)
+            ZStack {
+                QuietDeskScene(mood: mood, sunsetProgress: desk.sunsetProgress,
+                               window: desk.window, windowMotion: desk.windowMotion, teaLift: desk.teaLift, plantPulse: desk.plantPulse, lampGlow: desk.lampGlow)
+                    .animation(canAnimate ? .easeInOut(duration: desk.motionDuration) : nil, value: desk.motionRevision)
+                CompanionPetCanvas(pose: companion.pose(resting: desk.resting, reports: reportCount),
+                                   stage: companion.stage(reports: reportCount), night: night, bounce: companion.bounce)
+                    .animation(canAnimate ? .easeOut(duration: 0.7) : nil, value: companion.bounce)
+            }
+            .frame(height: 170)
+            .overlay { GeometryReader { geo in petButton.frame(width: geo.size.width * 70 / 360, height: geo.size.height * 62 / 156)
+                .position(x: geo.size.width * 238 / 360, y: geo.size.height * 106 / 156) } }
             HStack(alignment: .top, spacing: 16) {
                 Text(desk.caption(mood: mood)).id(desk.caption(mood: mood))
                     .font(.system(.subheadline, design: .serif)).foregroundStyle(WriteRightTheme.secondary)
@@ -29,6 +53,7 @@ struct InteractiveDeskView: View {
                 deskButton("添杯热茶", symbol: "cup.and.saucer", id: "home-tea", value: desk.teaLift > 0 ? "茶还温着" : "等你添茶") { desk.pourTea() }
                 deskButton("照料绿植", symbol: "leaf", id: "home-plant", value: desk.plantPulse > 0 ? "已照料小画里的绿植" : "窗边的小绿意") { desk.tendPlant() }
             }
+            CompanionCard(companion: companion, context: companionContext, reportCount: reportCount)
             Button {
                 desk.toggleRest()
             } label: {
@@ -38,6 +63,17 @@ struct InteractiveDeskView: View {
                 .accessibilityIdentifier("home-rest-mode").accessibilityValue(desk.resting ? "休息模式，夜晚" : "白天")
                 .accessibilityHint("切换小画的日落夜景和关灯状态，不改变App外观设置")
         }
+        .onAppear { companion.settleFocus(reports: reportCount); companion.recordVisit(now: now, reports: reportCount) }
+        .onChange(of: now) { _, value in companion.recordVisit(now: value, reports: reportCount) }
+        .onChange(of: reportCount) { _, count in companion.celebrateIfGrown(reports: count) }
+        .onChange(of: desk.motionRevision) { _, _ in companion.clearResponse() }
+        .onChange(of: mood) { _, _ in companion.clearResponse() }
+    }
+    private var petButton: some View {
+        Button { companion.pat(reports: reportCount) } label: { Color.clear.contentShape(Rectangle()) }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(companion.state.name)，\(companion.stage(reports: reportCount).title)")
+            .accessibilityHint("轻点摸摸它").accessibilityIdentifier("companion-pet")
     }
     private func deskButton(_ title: String, symbol: String, id: String, value: String, action: @escaping () -> Void) -> some View {
         Button { action() } label: {
