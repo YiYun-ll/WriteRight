@@ -19,16 +19,19 @@ targets:
     platform: iOS
     sources:
       - path: EssayPilot
+      - path: Shared
     configFiles:
       Debug: Config/Development.xcconfig
       Release: Config/Release.xcconfig
     dependencies:
       - package: Supabase
         product: Supabase
+      - target: WriteRightWidgets
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.yiyun.essaypilot.dev
         "CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]": Config/Simulator.entitlements
+        "CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]": Config/Shared.entitlements
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_FILE: Config/AppInfo.plist
         INFOPLIST_KEY_CFBundleDisplayName: WriteRight
@@ -36,8 +39,26 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_NSCameraUsageDescription: 拍摄题目和作文，交给 AI 看图批改并保留原稿回看。
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_NSSupportsLiveActivities: YES
         MARKETING_VERSION: "0.2.0"
         CURRENT_PROJECT_VERSION: "1"
+  WriteRightWidgets:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: WriteRightWidgets
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.yiyun.essaypilot.dev.widgets
+        PRODUCT_NAME: WriteRightWidgets
+        MARKETING_VERSION: "0.2.0"
+        CURRENT_PROJECT_VERSION: "1"
+        CODE_SIGN_ENTITLEMENTS: Config/Widget.entitlements
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_FILE: Config/WidgetInfo.plist
+        SKIP_INSTALL: YES
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"
   EssayPilotTests:
     type: bundle.unit-test
     platform: iOS

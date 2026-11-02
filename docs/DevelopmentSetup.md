@@ -100,6 +100,8 @@ npm run backend:stop
 
 在 Xcode 的 Signing & Capabilities 中选择自己的 Team，必要时覆盖开发 Bundle ID，连接 iPhone 并按系统提示完成信任与 Developer Mode。相机、手写 OCR、Keychain、签名和跨设备同步都需真机另行验收。
 
+主屏幕倒计时与陪写实时活动位于 `WriteRightWidgets` 扩展，使用 WidgetKit/ActivityKit 和 App Group `group.com.yiyun.essaypilot.shared`。主 App 与扩展分别在 `Config/Shared.entitlements`、`Config/Widget.entitlements` 声明该组；发布前需在同一 Team 下登记组并确保描述文件包含它。`Config/WidgetInfo.plist` 只声明 WidgetKit extension point，扩展由 `@main` 启动，不再声明 Principal Class。模拟器构建会嵌入 `PlugIns/WriteRightWidgets.appex`；真机锁屏、灵动岛和主屏幕放置仍需设备验收。
+
 2026-10-30 已安装官方 Xcode 27.2 至 `/Applications/Xcode.app`，首次组件配置通过，默认 CLI SDK 为 27.2。旧 Xcode 26.3 已移至用户废纸篓，未清空。现有项目通过新版模拟器构建、真机无签名构建和真机签名构建，并已实际安装、启动在 iOS 27.2 的 iPhone 上。Personal Team 配置只保存在 ignored `ios/Config/Local.xcconfig`，证书和私钥在本机钥匙串。
 
 当前真机安装包的 Supabase 地址与公开 key 未配置；本地写作、系统相册和 Vision 可以使用，联网登录/AI 批改不能据此宣称通过。模拟器前轮真实后端验收使用 DEBUG 环境覆盖，不自动适用于这个真机安装包。连接手机可访问的测试后端仍是后续独立配置项；不要将模拟器 localhost 地址直接填入手机。

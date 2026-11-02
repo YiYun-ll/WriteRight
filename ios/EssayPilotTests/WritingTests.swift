@@ -149,5 +149,6 @@ final class WritingTextTests: XCTestCase {
     func gradingReports() throws -> [GradingReportDocument] { try store.gradingReports() }
     func saveGradingJob(_ job: GradingJobDocument) throws { try store.saveGradingJob(job) }
     func saveGradingReport(_ report: GradingReportDocument) throws { try store.saveGradingReport(report) }
+    func deleteGradingReport(id: UUID) throws { try store.deleteGradingReport(id: id) }
     func exportData() throws -> Data { try store.exportData() }
 }

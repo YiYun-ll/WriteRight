@@ -1,3 +1,4 @@
+import SwiftData
 import XCTest
 @testable import EssayPilot
 
@@ -98,6 +99,70 @@ import XCTest
         XCTAssertEqual(app.favorites.count, 1)
         app.deleteFavorite(id: try XCTUnwrap(app.favorites.first?.id))
         XCTAssertFalse(app.isKept(expression: expression.expression))
+    }
+
+    func testV4ReportSurvivesV5Migration() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("writing.store")
+        let submission = SubmissionDocument(id: UUID(), draftID: UUID(), task: .empty(part: .a), originalText: "Example.", wordCount: 1, contentHash: "x", sentences: [], submittedAt: .now)
+        let result = report(submission: submission, part: .a, score: 7, rubric: "A")
+        do {
+            let schema = Schema(WritingSchemaV4.models)
+            let configuration = ModelConfiguration(schema: schema, url: url, cloudKitDatabase: .none)
+            let container = try ModelContainer(for: schema, configurations: [configuration])
+            let context = ModelContext(container)
+            context.insert(LocalGradingReport(document: result, ownerKey: "local", payload: try JSONEncoder().encode(result)))
+            try context.save()
+        }
+
+        let migrated = try SwiftDataWritingRepository(storeURL: url)
+        XCTAssertEqual(try migrated.gradingReports(), [result])
+        let change = try XCTUnwrap(migrated.gradingReportChanges().first)
+        XCTAssertTrue(change.dirty)
+        XCTAssertFalse(change.deleted)
+        XCTAssertEqual(change.baseRevision, 0)
+    }
+
+    func testDeletedReportStaysHiddenAfterReopeningAndLateSave() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let url = directory.appendingPathComponent("writing.store")
+        let submission = SubmissionDocument(id: UUID(), draftID: UUID(), task: .empty(part: .a), originalText: "Example.", wordCount: 1, contentHash: "x", sentences: [], submittedAt: .now)
+        let result = report(submission: submission, part: .a, score: 7, rubric: "A")
+        var repository: SwiftDataWritingRepository? = try .init(storeURL: url)
+        try repository?.saveGradingReport(result)
+        try repository?.deleteGradingReport(id: result.id)
+        repository = nil
+
+        let reopened = try SwiftDataWritingRepository(storeURL: url)
+        XCTAssertTrue(try reopened.gradingReports().isEmpty)
+        XCTAssertTrue(try XCTUnwrap(reopened.gradingReportChanges().first).deleted)
+        try reopened.saveGradingReport(result)
+        XCTAssertTrue(try reopened.gradingReports().isEmpty, "a late grading response must not revive a deleted report")
+    }
+
+    func testReportDeletionSyncsToAnotherDeviceWithoutResurrecting() async throws {
+        let first = try SwiftDataWritingRepository(inMemory: true)
+        let second = try SwiftDataWritingRepository(inMemory: true)
+        let cloud = SyncDirectory()
+        let owner = UUID()
+        let submission = SubmissionDocument(id: UUID(), draftID: UUID(), task: .empty(part: .b), originalText: "Example.", wordCount: 1, contentHash: "x", sentences: [], submittedAt: .now)
+        let result = report(submission: submission, part: .b, score: 11, rubric: "B")
+        try first.saveGradingReport(result)
+        _ = try await AccountSynchronizer.sync(userID: owner, repository: first, transport: cloud)
+        _ = try await AccountSynchronizer.sync(userID: owner, repository: second, transport: cloud)
+        XCTAssertEqual(try second.gradingReports(), [result])
+
+        try first.deleteGradingReport(id: result.id)
+        _ = try await AccountSynchronizer.sync(userID: owner, repository: first, transport: cloud)
+        _ = try await AccountSynchronizer.sync(userID: owner, repository: second, transport: cloud)
+        XCTAssertTrue(try first.gradingReports().isEmpty)
+        XCTAssertTrue(try second.gradingReports().isEmpty)
+        _ = try await AccountSynchronizer.sync(userID: owner, repository: second, transport: cloud)
+        _ = try await AccountSynchronizer.sync(userID: owner, repository: first, transport: cloud)
+        XCTAssertTrue(try first.gradingReports().isEmpty)
+        XCTAssertTrue(try second.gradingReports().isEmpty)
     }
 
     func testDeleteAccountFailureKeepsLocalDrafts() async throws {

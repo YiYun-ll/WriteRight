@@ -3,9 +3,9 @@ import Foundation
 struct ExamDesk {
     var calendar: Calendar
 
-    static let examYear = 2026
-    static let examMonth = 12
-    static let examDay = 19
+    static let examYear = ExamSchedule.examYear
+    static let examMonth = ExamSchedule.examMonth
+    static let examDay = ExamSchedule.examDay
 
     struct Snapshot: Equatable {
         var daysRemaining: Int

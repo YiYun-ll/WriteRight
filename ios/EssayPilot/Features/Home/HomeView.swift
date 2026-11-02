@@ -229,6 +229,9 @@ struct HomeView: View {
 struct PracticeView: View {
     @EnvironmentObject private var model: AppModel
     @Environment(\.dynamicTypeSize) private var typeSize
+    @StateObject private var removal = PendingRemoval()
+    @ScaledMetric(relativeTo: .body) private var reportRowHeight = 88
+    @ScaledMetric(relativeTo: .body) private var reportRowSpacing = 12
     let onPhotos: () -> Void
     let onCreate: (WritingPart, WritingTaskDocument?) -> Void
     let onOpen: (DraftDocument) -> Void
@@ -306,10 +309,11 @@ struct PracticeView: View {
                         }
                     }
                 }
-                if !model.gradingReports.isEmpty {
+                let reports = model.gradingReports.filter { !removal.hides($0.id) }
+                if !reports.isEmpty {
                     VStack(alignment: .leading, spacing: 15) {
                         Text("最近报告").font(.title2.weight(.semibold))
-                        ForEach(model.gradingReports) { report in
+                        List(reports) { report in
                             Button { onOpenReport(report) } label: {
                                 HStack(spacing: 16) {
                                     if let score = report.report.score.value {
@@ -327,8 +331,19 @@ struct PracticeView: View {
                                     Image(systemName: "chevron.right").font(.caption).foregroundStyle(WriteRightTheme.secondary)
                                 }
                                 .padding(20).background(WriteRightTheme.surface, in: RoundedRectangle(cornerRadius: 20))
-                            }.buttonStyle(.plain).accessibilityIdentifier("recent-report")
+                            }
+                            .buttonStyle(.plain).accessibilityIdentifier("recent-report")
+                            .accessibilityHint("轻点查看报告，左滑可删除")
+                            .listRowInsets(EdgeInsets()).listRowSeparator(.hidden).listRowBackground(Color.clear)
+                            .listRowSpacing(reportRowSpacing)
+                            .swipeActions {
+                                Button("删除", role: .destructive) {
+                                    removal.remove(id: report.id, message: "已删除\(report.part.title)报告") { model.delete(report) }
+                                }.accessibilityIdentifier("delete-report")
+                            }
                         }
+                        .listStyle(.plain).scrollContentBackground(.hidden).scrollDisabled(true)
+                        .frame(height: CGFloat(reports.count) * reportRowHeight + CGFloat(max(0, reports.count - 1)) * reportRowSpacing)
                     }
                 }
             }.padding(.horizontal, 24).padding(.top, 15).padding(.bottom, 32)
@@ -336,6 +351,7 @@ struct PracticeView: View {
         .background(WriteRightTheme.background)
         .foregroundStyle(WriteRightTheme.ink)
         .navigationTitle("练习")
+        .undoableRemoval(removal, account: model.account?.userID)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink { HistoryView(onOpen: onOpen, onCreate: {}) } label: {

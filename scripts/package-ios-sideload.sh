@@ -32,12 +32,40 @@ trap 'rm -rf "$task_stage"' EXIT
 mkdir -p "$task_stage/Payload"
 ditto --norsrc --noextattr "$task_app" "$task_stage/Payload/EssayPilot.app"
 
-# Remove signing remnants from the copy only. The recipient signs it locally.
-find "$task_stage" -type d -name _CodeSignature -prune -exec rm -rf {} +
+# Drop any device-specific profile. Keep an ad-hoc signature that carries the
+# App Group entitlement so a signer which registers extensions can copy it.
+# iLoader 2.4.1 ignores this and reuses the main profile; it cannot enable the widget.
 find "$task_stage" -name embedded.mobileprovision -type f -delete
+find "$task_stage" -type d -name _CodeSignature -prune -exec rm -rf {} +
+task_app_entitlements="$task_root/ios/Config/Shared.entitlements"
+task_widget_entitlements="$task_root/ios/Config/Widget.entitlements"
+task_payload_app="$task_stage/Payload/EssayPilot.app"
+task_widget="$task_payload_app/PlugIns/WriteRightWidgets.appex"
+cp "$task_app_entitlements" "$task_payload_app/archived-expanded-entitlements.xcent"
+if [[ -d "$task_widget" ]]; then
+  cp "$task_widget_entitlements" "$task_widget/archived-expanded-entitlements.xcent"
+  /usr/bin/codesign --force --sign - --entitlements "$task_widget_entitlements" \
+    --generate-entitlement-der --timestamp=none "$task_widget"
+fi
+/usr/bin/codesign --force --sign - --entitlements "$task_app_entitlements" \
+  --generate-entitlement-der --timestamp=none "$task_payload_app"
 task_version="$(/usr/bin/plutil -extract CFBundleShortVersionString raw -o - "$task_app/Info.plist")"
 task_ipa="$task_output/WriteRight-${task_version}-${task_build}-sideload.ipa"
 ditto -c -k --norsrc --noextattr --keepParent "$task_stage/Payload" "$task_ipa"
 unzip -tq "$task_ipa"
+task_check="$(mktemp -d)"
+unzip -q "$task_ipa" -d "$task_check"
+task_signed="$task_check/Payload/EssayPilot.app"
+task_group="group.com.yiyun.essaypilot.shared"
+for task_target in "$task_signed" "$task_signed/PlugIns/WriteRightWidgets.appex"; do
+  /usr/bin/codesign -d --entitlements :- "$task_target" 2>/dev/null | /usr/bin/grep -q "$task_group"
+done
+if find "$task_signed" -name embedded.mobileprovision -print | grep -q .; then
+  printf 'Sideload IPA must not contain a provisioning profile.\n' >&2
+  exit 1
+fi
+test "$(/usr/bin/plutil -extract NSSupportsLiveActivities raw -o - "$task_signed/Info.plist")" = "true"
+test "$(/usr/bin/plutil -extract NSExtension.NSExtensionPointIdentifier raw -o - "$task_signed/PlugIns/WriteRightWidgets.appex/Info.plist")" = "com.apple.widgetkit-extension"
+rm -rf "$task_check"
 (cd "$task_output" && shasum -a 256 "$(basename "$task_ipa")" > "$(basename "$task_ipa").sha256")
-printf 'Unsigned device Release IPA ready for recipient signing:\n%s\n' "$task_ipa"
+printf 'Device Release IPA with widget entitlements, ready for a signer that registers extensions:\n%s\n' "$task_ipa"

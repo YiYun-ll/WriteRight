@@ -38,6 +38,9 @@ final class GradingFlowTests: XCTestCase {
         add(overview)
         app.buttons["逐句"].tap()
         XCTAssertTrue(app.staticTexts["I have a book."].waitForExistence(timeout: 5))
+        app.buttons["report-detail"].tap(); app.buttons["简洁"].tap()
+        let conciseReport = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); conciseReport.name = "report-reading-concise"; conciseReport.lifetime = .keepAlways; add(conciseReport)
+        app.buttons["report-detail"].tap(); app.buttons["详细"].tap()
         app.buttons["修改稿"].tap()
         XCTAssertTrue(app.buttons["表达增强"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["rewrite-translation"].waitForExistence(timeout: 5))
@@ -60,6 +63,30 @@ final class GradingFlowTests: XCTestCase {
         recent.tap(); app.buttons["report-section-review"].tap()
         XCTAssertEqual(app.buttons["keep-expression"].firstMatch.label, "已收藏")
         app.buttons["close-report"].tap()
+        let reportUndo = app.buttons["undo-removal"]
+        app.tabBars.buttons["我的"].tap(); app.buttons["profile-reports"].tap()
+        let reportSearch = app.searchFields["搜索题目或点评"]
+        XCTAssertTrue(reportSearch.waitForExistence(timeout: 5)); reportSearch.tap(); reportSearch.typeText("Book club\n")
+        app.buttons["Close"].tap()
+        let shelfRow = app.buttons["report-row"].firstMatch
+        XCTAssertTrue(shelfRow.waitForExistence(timeout: 5))
+        app.buttons["report-select"].tap(); app.buttons["report-batch-delete"].tap(); app.buttons["report-batch-delete"].tap()
+        XCTAssertTrue(reportUndo.waitForExistence(timeout: 3)); reportUndo.tap()
+        XCTAssertTrue(shelfRow.waitForExistence(timeout: 3))
+        let reportShelf = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); reportShelf.name = "report-shelf-search-selection"; reportShelf.lifetime = .keepAlways; add(reportShelf)
+        app.tabBars.buttons["练习"].tap()
+        recent.swipeLeft(); app.buttons["delete-report"].tap()
+        XCTAssertTrue(reportUndo.waitForExistence(timeout: 3))
+        XCTAssertFalse(recent.exists)
+        let reportUndoBar = XCTAttachment(screenshot: XCUIScreen.main.screenshot()); reportUndoBar.name = "recent-report-undo-bar"; reportUndoBar.lifetime = .keepAlways; add(reportUndoBar)
+        reportUndo.tap()
+        XCTAssertTrue(recent.waitForExistence(timeout: 3))
+        recent.swipeLeft(); app.buttons["delete-report"].tap()
+        XCTAssertTrue(reportUndo.waitForExistence(timeout: 3))
+        let reportUndoGone = expectation(for: NSPredicate(format: "exists == false"), evaluatedWith: reportUndo)
+        wait(for: [reportUndoGone], timeout: 10)
+        XCTAssertFalse(recent.exists)
+
         app.tabBars.buttons["首页"].tap()
         let corner = app.buttons["home-open-favorites"]
         for _ in 0..<10 where !corner.isHittable { app.swipeUp() }

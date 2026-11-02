@@ -494,3 +494,49 @@
 - 与这次安装相同的签名包：artifacts/device-020-20261101-150158/WriteRight-0.2.0-1.ipa（4,592,405 字节，SHA-256 `404ddadae6545e6fc862e151abfedc95de54d8175465c54e9ee35946babd1327`）。含本机开发描述文件，供已注册设备重装。
 - 侧载包 artifacts/sideload-20261101-150307/WriteRight-0.2.0-1-sideload.ipa（5,426,937 字节，SHA-256 `4eb8240e3df21f8f84a78b99471948205dcf39bfc20c21850b489d9f90d65c08`）。ZIP 可解、Payload/EssayPilot.app、版本 0.2.0 构建 1、最低 iOS 17.0、Mach-O 平台 IOS、无描述文件/签名目录/私钥；公开云配置检查通过。接收方需自行重签。
 - 安装与启动不代表完整真机相机、多页手写或 VoiceOver 验收。未部署、未调用模型、未改生产数据。P9 不标完成。
+
+## 2026-11-01 最近报告删除与撤销
+
+### 实际交付
+
+- 练习页「最近报告」支持左滑删除，复用 `PendingRemoval`：立即隐藏并显示约5秒撤销条，撤销不写入删除；超时、离开页面、进入后台或删除下一条时生效，切换账号放弃待删。只删除报告，不连带删除草稿、提交或收藏。
+- SwiftData升级V5，以独立 `LocalGradingReportSyncState` 保存报告修订号、脏标记和删除墓碑；旧报告轻量迁移保留，删除经现有同步协议传播，远端删除、迟到批改响应和重复同步均不复活报告。首轮直接在原模型加字段导致重复版本校验和，已改为独立状态模型并重新验证。
+- 需求、设计规范、P7阶段证据和V1验收记录同步更新。无需后端迁移或部署。
+
+### 检查与证据
+
+- `npm run ios:generate`、`npm run ios:build`通过；`npm run check`及后端65项测试通过；`git diff --check`通过。`npm run env:check`仅因本机缺少Codex CLI返回非零，Xcode、模拟器SDK和XcodeGen正常。
+- 最终全部原生94项通过：artifacts/ios-tests-20261101-230715.xcresult，包含V4→V5旧报告迁移、删除后重启仍隐藏、迟到保存不复活、双设备删除同步。
+- 完整原生/UI批次artifacts/ios-tests-20261101-225034.xcresult共120项通过、1项按设计跳过；唯一失败为既有`LiveAcceptanceTests.testRealAlbumOCRAndModelReport()`真实相册/云端OCR验收，与本次改动无关，不将完整批次称为全绿。报告删除→撤销→再次删除的UI流程在该批次通过。
+- 报告撤销条截图已实际查看：artifacts/report-delete-attachments-20261101/5529E246-6BB4-46F7-82C7-63BAE689728E.png。未调用模型、未部署、未改生产数据、未安装真机；跨设备效果由两份本地库验证，物理双机仍待验收。
+
+## 2026-11-02 数据可靠性、报告体验与系统扩展
+
+### 实际交付
+
+- 冷启动恢复会话失败时按本机缓存身份打开原账号空间，明确离线且不伪装可云端批改；照片新增、排序、旋转即时保存，切换账号不再丢失未保存照片。同步拉取完整分页，设置页显示实际待同步数量。
+- 备份V4包含草稿、提交、报告、收藏、记录和原图；可导入合并，冲突文档另建标识，同名不同图在写入前停止。单份报告可导出分享。缓存页显示文件数/占用/上限，超过100MB–1GB设定值清理最久未读文件，支持手动清理，本机原稿不受影响。
+- 「我的报告」支持题目/点评搜索、题型筛选、单份导出和多选删除；单删与批量删除均延迟生效并可撤销，批量操作放在顶部以避免与Tab栏命中冲突。逐句报告支持必改/类型筛选、简洁/详细讲解和原句—建议对照；照片按页呈现。收藏来源定位到实际对应句子，兼容be useful for/is useful for，找不到时留空而非误引第一句。
+- 陪写新增60分钟和5–120分钟自定义，ActivityKit实时活动显示真实结束时间，提前结束按实际分钟结算。新增WriteRightWidgets扩展，主屏幕显示同一考试倒计时，锁屏/灵动岛显示陪写状态；App Group共享配置，应用声明NSSupportsLiveActivities。视觉沿用纸白、暖墨、柿橙与衬线，减少重复说明并以布局承载层级。
+
+### 检查与证据
+
+- `npm run ios:generate`、`npm run ios:build`通过；`npm run check`与后端65项测试通过；`git diff --check`通过。`npm run env:check`仅缺Codex CLI，Xcode/模拟器SDK/XcodeGen正常。
+- 最终全部原生102项通过：artifacts/ios-tests-20261102-004305.xcresult。新增验证备份含图往返、冲突合并不覆盖、离线冷启动、205条同步分页、照片即时保存、准确收藏来源、缓存清理、60分钟及实时活动控制。
+- 完整原生/UI批次artifacts/ios-tests-20261102-002343.xcresult为128项通过、1项跳过、2项失败：DevelopmentFlow详细报告缺少「为什么」标签已修复，并于artifacts/ios-tests-20261102-004028.xcresult单独复验通过；另一项仍为既有LiveAcceptance真实相册/云端OCR环境失败，不将完整批次称为全绿。
+- 报告搜索/多选删除撤销/简洁对照全流程通过：artifacts/ios-tests-20261102-001925.xcresult。截图已实际查看：artifacts/expanded-feature-acceptance-20261102/645F9719-2A6E-483C-8FB6-723710C4FE74.png、7D215C42-5C22-4090-B176-81BF927EE40A.png。
+- 真机平台Release及公开云配置检查通过：artifacts/sideload-20261102-004154/WriteRight-0.2.0-2-sideload.ipa。ZIP/包含Widget扩展/NSSupportsLiveActivities=true检查通过，接收方需自行重签；未安装手机。
+- 当前物理iPhone显示unavailable，因此真机相机、多页手写、灵动岛外观、锁屏实时活动和主屏幕放置仍待设备验收；模拟器扩展安装和UI流程不替代这些项目。未部署、未调用模型、未改生产数据。
+
+## 2026-11-02 覆盖安装 0.2.0（2）
+
+- 用户连接手机后，yyyy（iPhone 18 Pro，iOS 27.2，有线、已配对、开发者模式已开、ddi 可用）覆盖安装 WriteRight 0.2.0（2）并启动，进程 9626。未卸载、未清数据。证据 artifacts/device-0202-20261102-164902/install.json、launch.json。
+- 签名 Release 使用既有 Personal Team。主 App 描述文件包含 `group.com.yiyun.essaypilot.shared`；小组件描述文件的 App Group 列表为空，因此本次小组件签名未带该组。源文件 `ios/Config/Widget.entitlements` 仍声明该组，构建后已核对未改。公开云配置检查通过。主屏幕倒计时与依赖共享组的小组件数据仍待描述文件补上该组后重装验收。
+- 安装与启动不代表真机相机、多页手写、灵动岛外观或主屏幕小组件放置通过。未部署、未调用模型、未改生产数据。
+
+## 2026-11-02 侧载包保留小组件权限
+
+- 核对 iLoader 2.4.1（2026-10-28）源码：`ExtensionsBehavior` 固定为 `ReuseMain`，小组件不单独注册 App ID，签名沿用主应用描述文件。只重打未签名 IPA 不能让这份 iLoader 启用灵动岛。
+- `scripts/package-ios-sideload.sh` 改为在去掉设备描述文件后，用临时签名把 `group.com.yiyun.essaypilot.shared` 写入主应用和 `WriteRightWidgets.appex`，并附上 `archived-expanded-entitlements.xcent`。不导出私钥。
+- 实际生成 `artifacts/sideload-20261102-170228/WriteRight-0.2.0-3-sideload.ipa`（5,688,226 字节，SHA-256 `ce81849c6659ba7801354e8de6345a4fc7fded70882f0b049904c89595b915e5`）。解压后主应用与小组件都能读到该 App Group，无 `embedded.mobileprovision`，`NSSupportsLiveActivities` 为 true，扩展点为 WidgetKit。公开云配置检查通过。
+- 接收方需要用会单独登记扩展的工具安装，当前对应 Sideloadly，且不要移除扩展。尚未在接收方手机上安装，不能把包结构检查说成灵动岛已经出现。未部署、未改生产数据。

@@ -158,15 +158,30 @@ struct SyncSummary: Equatable {
             ))
             if case .applied = result { applied += 1 }
         }
-        for report in try repository.gradingReports() {
+        for change in try repository.gradingReportChanges() where change.dirty {
+            let report = change.report
             let result = try await transport.push(userID: userID, op: SyncOperation(
-                entityType: "report", entityID: report.id, operation: "upsert", baseRevision: 0,
-                payload: try encoder.encode(report)
+                entityType: "report", entityID: report.id, operation: change.deleted ? "delete" : "upsert",
+                baseRevision: change.baseRevision, payload: try encoder.encode(report)
             ))
-            if case .applied = result { applied += 1 }
+            switch result {
+            case .applied(let revision, _):
+                try repository.acknowledgeGradingReport(id: report.id, revision: revision, deleted: false)
+                applied += 1
+            case .deleted:
+                try repository.acknowledgeGradingReport(id: report.id, revision: change.baseRevision, deleted: true)
+                applied += 1
+            case .conflict(let server):
+                if let remote = try? decoder.decode(GradingReportDocument.self, from: server.payload) {
+                    try repository.applyRemoteGradingReport(remote, revision: server.revision)
+                }
+                applied += 1
+            }
         }
         var cursor = try repository.syncCursor()
-        for item in try await transport.pull(userID: userID, after: cursor) {
+        while true {
+            let page = try await transport.pull(userID: userID, after: cursor)
+            for item in page {
             cursor = max(cursor, item.serverRevision)
             switch item.entityType {
             case "draft":
@@ -196,15 +211,21 @@ struct SyncSummary: Equatable {
                     applied += 1
                 }
             case "report":
-                if let report = try? decoder.decode(GradingReportDocument.self, from: item.payload) {
-                    try? repository.saveGradingReport(report)
+                if item.operation == "delete" {
+                    try repository.acknowledgeGradingReport(id: item.entityID, revision: item.revision, deleted: true)
+                } else if try repository.gradingReportChanges().contains(where: { $0.report.id == item.entityID && $0.dirty }) {
+                    continue
+                } else if let report = try? decoder.decode(GradingReportDocument.self, from: item.payload) {
+                    try repository.applyRemoteGradingReport(report, revision: item.revision)
                     applied += 1
                 }
             default:
                 break
             }
+            }
+            try repository.setSyncCursor(cursor)
+            if page.count < 200 { break }
         }
-        try repository.setSyncCursor(cursor)
         // Separate cursor: an older client may have advanced the general stream past records.
         for change in try repository.notebookChanges() where change.dirty {
             let entry = change.entry

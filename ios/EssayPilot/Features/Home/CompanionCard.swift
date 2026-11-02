@@ -6,6 +6,8 @@ struct CompanionCard: View {
     let context: CompanionContext
     let reportCount: Int
     @State private var showGrowth = false
+    @State private var showCustomFocus = false
+    @State private var customMinutes = 30
     @Environment(\.dynamicTypeSize) private var typeSize
     @Environment(\.scenePhase) private var scenePhase
 
@@ -31,9 +33,11 @@ struct CompanionCard: View {
                     action("先到这里", symbol: "checkmark", id: "companion-focus-end") { companion.finishFocus(reports: reportCount) }
                 } else {
                     Menu {
-                        ForEach([10, 25, 45], id: \.self) { minutes in
+                        ForEach([10, 25, 45, 60], id: \.self) { minutes in
                             Button("\(minutes) 分钟") { companion.startFocus(minutes: minutes) }
+                                .accessibilityIdentifier("companion-focus-\(minutes)")
                         }
+                        Button("自定义…") { showCustomFocus = true }.accessibilityIdentifier("companion-focus-custom")
                     } label: { actionLabel("陪我写一会儿", symbol: "timer") }
                         .accessibilityIdentifier("companion-focus").accessibilityHint("选择时长，\(companion.state.name)会在书桌边陪你写")
                 }
@@ -44,6 +48,24 @@ struct CompanionCard: View {
         // Text changes instantly; cross-fading lines of different heights leaves overlapping ghosts.
         .transaction { $0.animation = nil }
         .sheet(isPresented: $showGrowth) { CompanionGrowthView(companion: companion, reportCount: reportCount) }
+        .sheet(isPresented: $showCustomFocus) {
+            NavigationStack {
+                VStack(alignment: .leading, spacing: 28) {
+                    Text("留一段安静时间").font(.system(.title2, design: .serif))
+                    Text("\(customMinutes) 分钟").font(.system(size: 48, design: .serif)).monospacedDigit()
+                        .accessibilityIdentifier("custom-focus-minutes")
+                    Slider(value: Binding(get: { Double(customMinutes) }, set: { customMinutes = Int($0) }), in: 5...120, step: 5)
+                        .accessibilityIdentifier("custom-focus-slider")
+                    Stepper("每次调整 5 分钟", value: $customMinutes, in: 5...120, step: 5)
+                    Button("开始陪写") {
+                        companion.startFocus(minutes: customMinutes); showCustomFocus = false
+                    }.buttonStyle(MainActionStyle()).accessibilityIdentifier("custom-focus-start")
+                    Spacer()
+                }.padding(24).background(WriteRightTheme.background).foregroundStyle(WriteRightTheme.ink)
+                    .navigationTitle("陪写时长").navigationBarTitleDisplayMode(.inline)
+                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button("取消") { showCustomFocus = false } } }
+            }.presentationDetents([.medium])
+        }
         .task(id: companion.state.focusEndsAt) {
             guard let end = companion.state.focusEndsAt else { return }
             try? await Task.sleep(nanoseconds: UInt64(max(0, end.timeIntervalSinceNow) * 1_000_000_000))

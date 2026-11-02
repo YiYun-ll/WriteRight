@@ -15,7 +15,7 @@ iLoader官方支持导入IPA，支持Windows、macOS和Linux；Windows需要iTun
 - 你的电脑和能传数据的USB线。
 - 你的iPhone，知道解锁密码，愿意按系统提示完成信任和Developer Mode设置。
 - 你自己的Apple账户，能接收两步验证提示。不要向开发者发送密码、验证码或配对文件。
-- 开发者发来的 `WriteRight-0.2.0-1-sideload.ipa`；这是等待你重新签名的包，不能直接在“文件”里打开安装。
+- 开发者发来的 `WriteRight-0.2.0-3-sideload.ipa`；这是等待你重新签名的包，不能直接在“文件”里打开安装。要用主屏幕小组件、锁屏或灵动岛时，用 Sideloadly 安装，不要勾选 Remove Extensions。iLoader 2.4.1 会把小组件套进主应用的描述文件，扩展不会单独生效。
 - 可正常联网的电脑与手机。
 
 只从 [iloader.app](https://iloader.app/) 或 [nab138/iloader 的 Releases](https://github.com/nab138/iloader/releases) 下载工具。iLoader会处理Apple账户凭据，应由你本人在自己的电脑里操作；不要在仿冒网站填写账户。Apple签名账户和App里的邮箱账号用途不同。[iLoader官方说明](https://iloader.app/)
@@ -27,7 +27,7 @@ iLoader官方支持导入IPA，支持Windows、macOS和Linux；Windows需要iTun
 3. 用USB连接iPhone，手动解锁，出现“信任此电脑”时按系统提示确认。
 4. 打开iLoader，选择这台iPhone。
 5. 在iLoader登录自己的Apple账户，按提示完成验证。没有付费会员也可使用免费开发签名；首次使用可能需要本人处理Apple账户或开发者协议。
-6. 选择导入/安装自选IPA的操作，选中 `WriteRight-0.2.0-1-sideload.ipa`。界面名称以实际稳定版为准；**不需要为了安装WriteRight先安装SideStore或LiveContainer**。
+6. 只安装主应用、可以不要小组件和灵动岛时，选择导入/安装自选IPA，选中 `WriteRight-0.2.0-3-sideload.ipa`。界面名称以实际稳定版为准；**不需要为了安装WriteRight先安装SideStore或LiveContainer**。要小组件或灵动岛时，改用 [Sideloadly](https://sideloadly.io/) 导入同一份 IPA，不要勾选 Remove Extensions，再用自己的 Apple 账户签名安装。
 7. 等待iLoader完成重新签名与安装。若有Bundle ID或证书提示，先记录原文；不要随意切换账户、删除证书或修改应用标识。
 8. 在手机“设置 → 通用 → VPN与设备管理”的开发者App中，按提示信任你自己的账户。iOS18可能要求“允许并重新启动”，由你本人确认。
 9. 在“设置 → 隐私与安全性 → 开发者模式”按系统提示开启、重启并确认。找不到入口时先确认开发签名App已安装，再按工具/Apple指引排查。
@@ -107,3 +107,5 @@ bash scripts/package-ios-sideload.sh
 最新包为0.1.0(8)：记录保留单一创建入口与分组卡片，首页含窗边风雨、茶气/绿植互动，并修复重复休息区及视图ID冲突。已在开发者连接的手机覆盖安装并启动；这不代替接收方设备的验收。
 
 2026-11-01更新：最新交付包为0.2.0(1)，`WriteRight-0.2.0-1-sideload.ipa`。包含此前书桌重绘、小猫成长与来源整理。开发者已连接的 iPhone 18 Pro 已覆盖安装并启动同一版本；接收方仍需用自己的账户重签，这不代替接收方设备的验收。
+
+2026-11-02更新：最新侧载包为0.2.0(3)，`WriteRight-0.2.0-3-sideload.ipa`。主应用和小组件扩展都带有 `group.com.yiyun.essaypilot.shared` 的临时签名，并声明实时活动。这不是可直接安装的开发描述文件。iLoader 2.4.1 固定复用主应用描述文件，不会给小组件单独登记，因此不能靠它启用灵动岛。接收方要用 Sideloadly 安装并保留扩展。尚未在接收方手机上验收。
