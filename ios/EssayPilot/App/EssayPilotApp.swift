@@ -5,6 +5,8 @@ struct EssayPilotApp: App {
     @StateObject private var model = AppModel()
     @AppStorage("appearance") private var appearance = "system"
 
+    init() { ExamSchedule.publish() }
+
     var body: some Scene {
         WindowGroup {
             ContentView()

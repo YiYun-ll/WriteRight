@@ -3,7 +3,7 @@ import SwiftUI
 /// Hides a swiped row at once and only deletes it when the undo window closes, so an undo can
 /// never race a sync that is already pushing the deletion.
 @MainActor final class PendingRemoval: ObservableObject {
-    struct Item: Equatable { let id: UUID; let message: String }
+    struct Item: Equatable { let ids: Set<UUID>; let message: String }
     @Published private(set) var item: Item?
     private var commit: (() -> Void)?
     private var timer: Task<Void, Never>?
@@ -12,8 +12,12 @@ import SwiftUI
     init(window: Duration = .seconds(5)) { self.window = window }
 
     func remove(id: UUID, message: String, commit: @escaping () -> Void) {
+        remove(ids: [id], message: message, commit: commit)
+    }
+
+    func remove(ids: Set<UUID>, message: String, commit: @escaping () -> Void) {
         finish()
-        item = Item(id: id, message: message); self.commit = commit
+        item = Item(ids: ids, message: message); self.commit = commit
         AccessibilityNotification.Announcement("\(message)，可以撤销").post()
         timer = Task { [weak self, window] in
             try? await Task.sleep(for: window)
@@ -28,7 +32,7 @@ import SwiftUI
         let action = commit; commit = nil; item = nil
         action?()
     }
-    func hides(_ id: UUID) -> Bool { item?.id == id }
+    func hides(_ id: UUID) -> Bool { item?.ids.contains(id) == true }
 }
 
 struct UndoRemovalBar: View {

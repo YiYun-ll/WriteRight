@@ -26,6 +26,13 @@ struct GradingStatusResponse: Codable {
     let errorCode: String?
 }
 
+struct GradingReportChange {
+    let report: GradingReportDocument
+    let baseRevision: Int64
+    let deleted: Bool
+    let dirty: Bool
+}
+
 struct GradingReportDocument: Codable, Identifiable, Equatable {
     let id: UUID
     let jobID: UUID

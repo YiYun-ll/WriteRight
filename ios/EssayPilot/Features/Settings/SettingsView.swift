@@ -1,4 +1,5 @@
 import SwiftUI
+import UniformTypeIdentifiers
 
 struct SettingsView: View {
     @EnvironmentObject private var model: AppModel
@@ -6,6 +7,8 @@ struct SettingsView: View {
     @AppStorage("appearance") private var appearance = "system"
     @State private var exportFile: ExportFile?
     @State private var editingNickname = false
+    @State private var importingBackup = false
+    @State private var importResult: String?
     var onOpen: (DraftDocument) -> Void = { _ in }
     var onPractice: () -> Void = {}
 
@@ -36,13 +39,19 @@ struct SettingsView: View {
                 }
                 section("数据与安心") {
                     Button { Task { await model.refreshNickname(); await model.syncNow() } } label: {
-                        row("立即同步", symbol: "arrow.triangle.2.circlepath", detail: model.syncState, chevron: false)
+                        row("立即同步", symbol: "arrow.triangle.2.circlepath", detail: model.syncStatusDetail, chevron: false)
                     }.disabled(model.syncState == "正在同步").accessibilityIdentifier("sync-now")
                     Divider()
                     Button {
                         do { exportFile = ExportFile(url: try model.exportURL()) }
                         catch { model.errorMessage = "未能导出练习，请重试。" }
                     } label: { row("导出练习", symbol: "square.and.arrow.up") }.accessibilityIdentifier("profile-export")
+                    Divider()
+                    Button { importingBackup = true } label: {
+                        row("导入备份", symbol: "tray.and.arrow.down", detail: "合并练习与原图，不覆盖当前内容")
+                    }.accessibilityIdentifier("profile-import")
+                    Divider()
+                    NavigationLink { StorageSettingsView() } label: { row("原图缓存", symbol: "internaldrive") }
                     Divider()
                     NavigationLink { PrivacyView() } label: { row("隐私与原稿", symbol: "hand.raised") }
                 }
@@ -68,6 +77,18 @@ struct SettingsView: View {
             .refreshable { await model.refreshNickname(); if model.account != nil { await model.syncNow() } }
             .sheet(isPresented: $editingNickname) { NavigationStack { NicknameEditorView() } }
             .sheet(item: $exportFile) { ShareSheet(url: $0.url) }
+            .fileImporter(isPresented: $importingBackup, allowedContentTypes: [.json]) { result in
+                do {
+                    let url = try result.get()
+                    let accessing = url.startAccessingSecurityScopedResource()
+                    defer { if accessing { url.stopAccessingSecurityScopedResource() } }
+                    let summary = try model.importBackup(data: Data(contentsOf: url))
+                    importResult = "已收好 \(summary.added) 项内容和 \(summary.images) 张原图。已有内容没有被覆盖。"
+                } catch { model.errorMessage = error.localizedDescription }
+            }
+            .alert("备份已导入", isPresented: Binding(get: { importResult != nil }, set: { if !$0 { importResult = nil } })) {
+                Button("好") { importResult = nil }
+            } message: { Text(importResult ?? "") }
     }
     @ViewBuilder private var accountHeader: some View {
         if let account = model.account {
@@ -133,25 +154,122 @@ struct SettingsView: View {
 
 private struct ReportShelfView: View {
     @EnvironmentObject private var model: AppModel
+    @StateObject private var removal = PendingRemoval()
     @State private var selected: GradingReportDocument?
+    @State private var exportFile: ExportFile?
+    @State private var search = ""
+    @State private var part = "all"
+    @State private var selecting = false
+    @State private var selectedIDs: Set<UUID> = []
+
+    private var visible: [GradingReportDocument] {
+        model.gradingReports.filter { !removal.hides($0.id) }.sorted { $0.createdAt > $1.createdAt }
+    }
+    private var filtered: [GradingReportDocument] {
+        visible.filter { report in
+            guard part == "all" || report.part.rawValue == part else { return false }
+            let title = model.submissions.first(where: { $0.id == report.submissionID })?.task.displayTitle ?? ""
+            return search.isEmpty || title.localizedCaseInsensitiveContains(search)
+                || report.report.overallComment.localizedCaseInsensitiveContains(search)
+                || report.part.title.localizedCaseInsensitiveContains(search)
+        }
+    }
+
     var body: some View {
         Group {
-            if model.gradingReports.isEmpty { ContentUnavailableView("还没有回信", systemImage: "doc.text", description: Text("完成一次批改后，报告会收在这里。")) }
-            else {
-                List(model.gradingReports.sorted { $0.createdAt > $1.createdAt }) { report in
-                    Button { selected = report } label: {
-                        HStack(spacing: 18) {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(report.part.title).font(.headline)
-                                Text(report.createdAt, format: .dateTime.month().day()).font(.caption).foregroundStyle(WriteRightTheme.secondary)
-                            }; Spacer()
-                            Text(report.report.score.value.map { "\($0.formatted()) / \(report.report.score.max)" } ?? "语言反馈").font(.system(.title3, design: .serif))
-                        }.padding(.vertical, 10)
-                    }.buttonStyle(.plain).listRowBackground(WriteRightTheme.surface)
-                }.scrollContentBackground(.hidden)
+            if visible.isEmpty {
+                ContentUnavailableView("还没有回信", systemImage: "doc.text", description: Text("完成一次批改后，报告会收在这里。"))
+            } else {
+                VStack(spacing: 0) {
+                    Picker("题型", selection: $part) {
+                        Text("全部").tag("all")
+                        ForEach(WritingPart.allCases) { Text($0.title).tag($0.rawValue) }
+                    }.pickerStyle(.segmented).padding(.horizontal, 24).padding(.vertical, 10)
+                    if filtered.isEmpty {
+                        ContentUnavailableView.search(text: search)
+                    } else {
+                        List(filtered) { report in row(report) }
+                            .listStyle(.insetGrouped).scrollContentBackground(.hidden)
+                    }
+                }
             }
-        }.background(WriteRightTheme.background).foregroundStyle(WriteRightTheme.ink).navigationTitle("我的报告")
-            .fullScreenCover(item: $selected) { GradingReportView(document: $0) }
+        }
+        .background(WriteRightTheme.background).foregroundStyle(WriteRightTheme.ink)
+        .navigationTitle("我的报告")
+        .searchable(text: $search, prompt: "搜索题目或点评")
+        .undoableRemoval(removal, account: model.account?.userID)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(selecting ? "完成" : "选择") {
+                    selecting.toggle(); if !selecting { selectedIDs = [] }
+                }.accessibilityIdentifier("report-select")
+            }
+            if selecting {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button(selectedIDs.isEmpty ? "全选" : "删除 \(selectedIDs.count) 份报告", role: .destructive) {
+                        if selectedIDs.isEmpty { selectedIDs = Set(filtered.map(\.id)) }
+                        else { deleteSelected() }
+                    }.accessibilityIdentifier("report-batch-delete")
+                }
+            }
+        }
+        .fullScreenCover(item: $selected) { GradingReportView(document: $0) }
+        .sheet(item: $exportFile) { ShareSheet(url: $0.url) }
+    }
+
+    private func row(_ report: GradingReportDocument) -> some View {
+        HStack(spacing: 14) {
+            if selecting {
+                Image(systemName: selectedIDs.contains(report.id) ? "checkmark.circle.fill" : "circle")
+                    .foregroundStyle(WriteRightTheme.accent).frame(width: 28)
+            }
+            Button {
+                if selecting {
+                    if selectedIDs.contains(report.id) { selectedIDs.remove(report.id) } else { selectedIDs.insert(report.id) }
+                } else { selected = report }
+            } label: {
+                HStack(spacing: 16) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(model.submissions.first(where: { $0.id == report.submissionID })?.task.displayTitle ?? report.part.title)
+                            .font(.headline).multilineTextAlignment(.leading)
+                        Text("\(report.part.title) · \(report.createdAt.formatted(.dateTime.month().day().hour().minute()))")
+                            .font(.caption).foregroundStyle(WriteRightTheme.secondary)
+                    }
+                    Spacer(minLength: 8)
+                    Text(report.report.score.value.map { "\($0.formatted()) / \(report.report.score.max)" } ?? "语言反馈")
+                        .font(.system(.title3, design: .serif)).fixedSize()
+                }.padding(.vertical, 10).contentShape(Rectangle())
+            }.buttonStyle(.plain).accessibilityIdentifier("report-row")
+            if !selecting {
+                Menu {
+                    Button("导出报告") {
+                        do { exportFile = ExportFile(url: try model.exportReportURL(report)) }
+                        catch { model.errorMessage = "未能导出报告，请重试。" }
+                    }.accessibilityIdentifier("report-export")
+                    Button("删除", role: .destructive) {
+                        removal.remove(id: report.id, message: "已删除\(report.part.title)报告") { model.delete(report) }
+                    }
+                } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
+                    .accessibilityLabel("报告操作")
+            }
+        }
+        .listRowBackground(WriteRightTheme.surface)
+        .swipeActions {
+            if !selecting {
+                Button("删除", role: .destructive) {
+                    removal.remove(id: report.id, message: "已删除\(report.part.title)报告") { model.delete(report) }
+                }
+            }
+        }
+    }
+
+    private func deleteSelected() {
+        let documents = model.gradingReports.filter { selectedIDs.contains($0.id) }
+        let count = documents.count
+        removal.remove(ids: selectedIDs, message: "已删除 \(count) 份报告") {
+            documents.forEach { model.delete($0) }
+        }
+        selecting = false; selectedIDs = []
     }
 }
 

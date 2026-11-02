@@ -54,6 +54,7 @@ import UIKit
                 let id = UUID(); let path = try store.save(data: data, id: id)
                 current.append(.init(id: id, relativePath: path, rawText: "", correctedText: "", lines: [], confirmed: false, transcriptionSource: "direct_photo"))
                 setPages(current, role: role)
+                _ = saveDraft()
             }
         } catch { if !Task.isCancelled { self.error = "这张照片没能放好，请重新选择。" } }
     }
@@ -62,6 +63,7 @@ import UIKit
         do {
             if !retainedIDs.contains(page.id) { try store?.remove(page.relativePath) }
             setPages(pages(role).filter { $0.id != page.id }, role: role)
+            if !taskPages.isEmpty || !essayPages.isEmpty { _ = saveDraft() }
         } catch { self.error = "照片暂时未能移除，请重试。" }
     }
     func move(_ page: ScanPageDocument, role: Role, offset: Int) {
@@ -69,6 +71,7 @@ import UIKit
         var current = pages(role)
         guard let index = current.firstIndex(where: { $0.id == page.id }), current.indices.contains(index + offset) else { return }
         current.swapAt(index, index + offset); setPages(current, role: role)
+        _ = saveDraft()
     }
     func rotate(_ page: ScanPageDocument, role: Role) async {
         guard let store, let image = image(page), let index = pages(role).firstIndex(where: { $0.id == page.id }) else { return }
@@ -80,6 +83,7 @@ import UIKit
             current[index] = .init(id: id, relativePath: path, rawText: "", correctedText: "", lines: [], confirmed: false, transcriptionSource: "direct_photo")
             if !retainedIDs.contains(page.id) { try store.remove(page.relativePath) }
             setPages(current, role: role)
+            _ = saveDraft()
         } catch { if !Task.isCancelled { self.error = "照片未能旋转，原图还在，请重试。" } }
     }
     @discardableResult func saveDraft() -> DraftDocument? {

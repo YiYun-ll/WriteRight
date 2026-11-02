@@ -14,13 +14,18 @@ import Combine
     private let owner: String
     private let calendar: Calendar
     private let deviceID: String
+    private let activity: any FocusActivityControlling
     private var patCount = 0
 
     init(owner: String, defaults: UserDefaults = .standard, calendar: Calendar = .current, now: Date = .now,
-         deviceID: String? = nil) {
+         deviceID: String? = nil, activity: any FocusActivityControlling = FocusActivityController.shared) {
         store = CompanionStore(defaults: defaults); self.owner = owner; self.calendar = calendar
         self.deviceID = deviceID ?? CompanionDevice.id(defaults: defaults)
+        self.activity = activity
         state = store.load(owner: owner) ?? CompanionState(metAt: now)
+        if let startedAt = state.focusStartedAt, let endsAt = state.focusEndsAt {
+            activity.start(name: state.name, startedAt: startedAt, endsAt: endsAt)
+        }
     }
 
     var focusing: Bool { state.focusEndsAt != nil }
@@ -70,12 +75,14 @@ import Combine
         state.focusStartedAt = now; state.focusEndsAt = now.addingTimeInterval(TimeInterval(minutes * 60))
         response = "好，\(state.name)陪你写 \(minutes) 分钟。不用写得完美，写下去就好。"
         persist(grew: false)
+        activity.start(name: state.name, startedAt: now, endsAt: state.focusEndsAt!)
     }
     /// Ending early still counts the minutes already spent together.
     func finishFocus(now: Date = .now, reports: Int) {
         guard let start = state.focusStartedAt, let end = state.focusEndsAt else { return }
         let minutes = max(0, Int(min(now, end).timeIntervalSince(start) / 60))
         state.focusStartedAt = nil; state.focusEndsAt = nil
+        activity.finish(name: state.name, endsAt: end)
         if minutes > 0 {
             state.growth.focusMinutes[deviceID, default: 0] += minutes
             state.growth.focusSessions[deviceID, default: 0] += 1

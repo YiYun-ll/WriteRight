@@ -5,6 +5,12 @@ struct GradingReportView: View {
     @EnvironmentObject private var model: AppModel
     let document: GradingReportDocument
     @State private var section = "overview"
+    @State private var requiredOnly = false
+    @State private var category = "all"
+    @State private var detailed = true
+    private var correctionCategories: [String] {
+        Set(document.report.corrections.map(\.category) + (document.report.photoReview?.corrections.map(\.category) ?? [])).sorted()
+    }
 
     var body: some View {
         NavigationStack {
@@ -15,10 +21,11 @@ struct GradingReportView: View {
                     VStack(alignment: .leading, spacing: 24) {
                         switch section {
                         case "sentences":
+                            ReportReadingControls(requiredOnly: $requiredOnly, category: $category, detailed: $detailed, categories: correctionCategories)
                             if let photo = document.report.photoReview { photoAdvice(photo) }
-                            else if document.report.sentenceReviews == nil { SentenceReportView(document: document) }
-                            SentenceReviewView(review: document.report.sentenceReviews)
-                            DevelopmentAdviceView(advice: document.report.advancedAdvice)
+                            else if document.report.sentenceReviews == nil { SentenceReportView(document: document, requiredOnly: requiredOnly, category: category, detailed: detailed) }
+                            SentenceReviewView(review: document.report.sentenceReviews, requiredOnly: requiredOnly, detailed: detailed)
+                            if detailed { DevelopmentAdviceView(advice: document.report.advancedAdvice) }
                         case "rewrites": rewritesView
                         case "review": reviewView
                         default: overviewView
@@ -115,16 +122,17 @@ struct GradingReportView: View {
 
     private func photoAdvice(_ photo: PhotoReviewPayload) -> some View {
         VStack(alignment: .leading, spacing: 22) {
-            Text("原稿在这里，建议也在这里。").font(.system(.title3, design: .serif))
-            Text("短片段仅用于定位建议；看不清的字以原图为准。可选润色不作为语言错误。").font(.footnote).foregroundStyle(WriteRightTheme.secondary)
+            Text("原稿与建议").font(.system(.title3, design: .serif))
             ForEach(photo.sources.filter { $0.role == "essay" }) { source in
                 ReportPhotoView(source: source)
-                ForEach(Array(photo.corrections.filter { $0.page == source.page && document.report.sentenceReviews == nil }.enumerated()), id: \.offset) { _, correction in
-                    VStack(alignment: .leading, spacing: 10) {
+                ForEach(Array(photo.corrections.filter {
+                    $0.page == source.page && document.report.sentenceReviews == nil
+                        && (!requiredOnly || $0.severity == "required") && (category == "all" || $0.category == category)
+                }.enumerated()), id: \.offset) { _, correction in
+                    VStack(alignment: .leading, spacing: 14) {
                         Text(correction.severity == "required" ? "需要修改 · \(correction.category)" : "可选表达 · \(correction.category)").font(.subheadline.weight(.medium)).foregroundStyle(WriteRightTheme.accent)
-                        Text(correction.original).font(.system(.body, design: .serif)).lineSpacing(5)
-                        Label { Text(correction.corrected).font(.system(.body, design: .serif)).lineSpacing(5) } icon: { Image(systemName: "arrow.turn.down.right") }
-                        Text(correction.reason).font(.subheadline).foregroundStyle(WriteRightTheme.secondary)
+                        OriginalRevisionPair(original: correction.original, revised: correction.corrected, revisedLabel: correction.severity == "required" ? "建议修改" : "也可以这样写")
+                        if detailed { Text(correction.reason).font(.subheadline).foregroundStyle(WriteRightTheme.secondary).lineSpacing(5) }
                     }.padding(20).frame(maxWidth: .infinity, alignment: .leading).background(WriteRightTheme.surface, in: RoundedRectangle(cornerRadius: 18))
                 }
             }
@@ -178,29 +186,42 @@ struct GradingReportView: View {
 
 private struct SentenceReportView: View {
     let document: GradingReportDocument
+    var requiredOnly = false
+    var category = "all"
+    var detailed = true
+    private var sentences: [SentenceSpan] {
+        document.sentences.filter { sentence in
+            guard let correction = document.report.corrections.first(where: { $0.sentenceID == sentence.id }) else {
+                return !requiredOnly && category == "all"
+            }
+            return (!requiredOnly || correction.severity == "required") && (category == "all" || correction.category == category)
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
-            ForEach(document.sentences) { sentence in
+            if sentences.isEmpty { GentleNote(text: "当前筛选下没有需要逐句阅读的内容。") }
+            ForEach(sentences) { sentence in
                 let correction = document.report.corrections.first { $0.sentenceID == sentence.id }
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(sentence.original)
-                        .font(.system(.body, design: .serif)).lineSpacing(6)
-                        .padding(10).frame(maxWidth: .infinity, alignment: .leading)
-                        .background(correction == nil ? Color.clear : WriteRightTheme.soft, in: RoundedRectangle(cornerRadius: 12))
+                VStack(alignment: .leading, spacing: 14) {
                     if let correction {
-                        if correction.severity == "required" {
-                            Text(correction.minimalCorrected)
-                                .font(.system(.body, design: .serif).weight(.medium)).lineSpacing(6)
+                        Text("\(correction.severity == "required" ? "需要修改" : "可选表达") · \(correction.category)")
+                            .font(.caption).foregroundStyle(WriteRightTheme.accent)
+                        OriginalRevisionPair(
+                            original: sentence.original,
+                            revised: correction.severity == "required" ? correction.minimalCorrected : correction.optionalUpgrade ?? correction.minimalCorrected,
+                            revisedLabel: correction.severity == "required" ? "建议修改" : "也可以这样写"
+                        )
+                        if detailed {
+                            Text(correction.reasonZH).font(.subheadline).foregroundStyle(WriteRightTheme.secondary).lineSpacing(5)
+                            if correction.severity == "required", let upgrade = correction.optionalUpgrade, !upgrade.isEmpty {
+                                Text(upgrade).font(.system(.body, design: .serif)).lineSpacing(6)
+                            }
                         }
-                        Text("\(correction.category) · \(correction.reasonZH)")
-                            .font(.subheadline).foregroundStyle(WriteRightTheme.secondary)
-                        if let upgrade = correction.optionalUpgrade, !upgrade.isEmpty {
-                            Text(upgrade).font(.system(.body, design: .serif)).lineSpacing(6)
-                        }
+                    } else {
+                        Text(sentence.original).font(.system(.body, design: .serif)).lineSpacing(6)
                     }
-                }
-                if sentence.id != document.sentences.last?.id { Divider() }
+                }.padding(18).background(correction == nil ? Color.clear : WriteRightTheme.surface, in: RoundedRectangle(cornerRadius: 16))
             }
         }
     }

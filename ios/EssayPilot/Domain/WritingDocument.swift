@@ -90,6 +90,10 @@ protocol WritingRepository: AnyObject {
     func gradingReports() throws -> [GradingReportDocument]
     func saveGradingJob(_ job: GradingJobDocument) throws
     func saveGradingReport(_ report: GradingReportDocument) throws
+    func deleteGradingReport(id: UUID) throws
+    func gradingReportChanges() throws -> [GradingReportChange]
+    func acknowledgeGradingReport(id: UUID, revision: Int64, deleted: Bool) throws
+    func applyRemoteGradingReport(_ report: GradingReportDocument, revision: Int64) throws
     func exportData() throws -> Data
     func notebookChanges() throws -> [NotebookChange]
     func saveNotebook(_ entry: NotebookEntry) throws
@@ -112,6 +116,10 @@ protocol WritingRepository: AnyObject {
 }
 
 extension WritingRepository {
+    func gradingReportChanges() throws -> [GradingReportChange] { [] }
+    func acknowledgeGradingReport(id: UUID, revision: Int64, deleted: Bool) throws {}
+    func applyRemoteGradingReport(_ report: GradingReportDocument, revision: Int64) throws {}
+
     func notebookChanges() throws -> [NotebookChange] { [] }
     func saveNotebook(_ entry: NotebookEntry) throws { throw LocalStoreError.unavailable }
     func acknowledgeNotebook(_ entry: NotebookEntry, revision: Int64, deleted: Bool) throws {}

@@ -76,6 +76,19 @@ import SwiftData
     }
 }
 
+@Model final class LocalGradingReportSyncState {
+    @Attribute(.unique) var reportID: UUID
+    var ownerKey: String
+    var serverRevision: Int64
+    var dirty: Bool
+    var deletedAt: Date?
+
+    init(reportID: UUID, ownerKey: String) {
+        self.reportID = reportID; self.ownerKey = ownerKey
+        serverRevision = 0; dirty = true
+    }
+}
+
 enum WritingSchemaV1: VersionedSchema {
     static var versionIdentifier = Schema.Version(1, 0, 0)
     static var models: [any PersistentModel.Type] {
@@ -142,13 +155,19 @@ enum WritingSchemaV4: VersionedSchema {
     static var models: [any PersistentModel.Type] { WritingSchemaV3.models + [LocalNotebookEntry.self, LocalNotebookCursor.self] }
 }
 
+enum WritingSchemaV5: VersionedSchema {
+    static var versionIdentifier = Schema.Version(5, 0, 0)
+    static var models: [any PersistentModel.Type] { WritingSchemaV4.models + [LocalGradingReportSyncState.self] }
+}
+
 enum WritingMigrationPlan: SchemaMigrationPlan {
-    static var schemas: [any VersionedSchema.Type] { [WritingSchemaV1.self, WritingSchemaV2.self, WritingSchemaV3.self, WritingSchemaV4.self] }
+    static var schemas: [any VersionedSchema.Type] { [WritingSchemaV1.self, WritingSchemaV2.self, WritingSchemaV3.self, WritingSchemaV4.self, WritingSchemaV5.self] }
     static var stages: [MigrationStage] {
         [
             .lightweight(fromVersion: WritingSchemaV1.self, toVersion: WritingSchemaV2.self),
             .lightweight(fromVersion: WritingSchemaV2.self, toVersion: WritingSchemaV3.self),
-            .lightweight(fromVersion: WritingSchemaV3.self, toVersion: WritingSchemaV4.self)
+            .lightweight(fromVersion: WritingSchemaV3.self, toVersion: WritingSchemaV4.self),
+            .lightweight(fromVersion: WritingSchemaV4.self, toVersion: WritingSchemaV5.self)
         ]
     }
 }
@@ -174,7 +193,7 @@ enum LocalStoreError: LocalizedError {
 
     init(ownerKey: String = "local", storeURL: URL? = nil, inMemory: Bool = false) throws {
         self.ownerKey = ownerKey
-        let schema = Schema(WritingSchemaV4.models)
+        let schema = Schema(WritingSchemaV5.models)
         let configuration: ModelConfiguration
         if let storeURL {
             try FileManager.default.createDirectory(at: storeURL.deletingLastPathComponent(), withIntermediateDirectories: true)
@@ -262,7 +281,9 @@ enum LocalStoreError: LocalizedError {
             predicate: #Predicate { $0.ownerKey == owner },
             sortBy: [SortDescriptor(\LocalGradingReport.createdAt, order: .reverse)]
         )
-        return try context.fetch(descriptor).map { try decoder.decode(GradingReportDocument.self, from: $0.payload) }
+        let states = try context.fetch(FetchDescriptor<LocalGradingReportSyncState>(predicate: #Predicate { $0.ownerKey == owner }))
+        let deleted = Set(states.filter { $0.deletedAt != nil }.map(\.reportID))
+        return try context.fetch(descriptor).filter { !deleted.contains($0.id) }.map { try decoder.decode(GradingReportDocument.self, from: $0.payload) }
     }
 
     func saveGradingJob(_ job: GradingJobDocument) throws {
@@ -288,6 +309,61 @@ enum LocalStoreError: LocalizedError {
         }
         context.insert(LocalGradingReport(document: report, ownerKey: ownerKey, payload: try encoder.encode(report)))
         do { try context.save() } catch { context.rollback(); throw error }
+    }
+
+    private func gradingReportState(id: UUID) throws -> LocalGradingReportSyncState {
+        if let state = try context.fetch(FetchDescriptor<LocalGradingReportSyncState>(predicate: #Predicate { $0.reportID == id })).first {
+            guard state.ownerKey == ownerKey else { throw LocalStoreError.ownerMismatch }
+            return state
+        }
+        let state = LocalGradingReportSyncState(reportID: id, ownerKey: ownerKey)
+        context.insert(state)
+        return state
+    }
+
+    func deleteGradingReport(id: UUID) throws {
+        guard let stored = try context.fetch(FetchDescriptor<LocalGradingReport>(predicate: #Predicate { $0.id == id })).first else { return }
+        guard stored.ownerKey == ownerKey else { throw LocalStoreError.ownerMismatch }
+        let state = try gradingReportState(id: id)
+        state.deletedAt = .now; state.dirty = true
+        try commit()
+    }
+
+    func gradingReportChanges() throws -> [GradingReportChange] {
+        let owner = ownerKey
+        let states = try context.fetch(FetchDescriptor<LocalGradingReportSyncState>(predicate: #Predicate { $0.ownerKey == owner }))
+        let statesByID = Dictionary(uniqueKeysWithValues: states.map { ($0.reportID, $0) })
+        return try context.fetch(FetchDescriptor<LocalGradingReport>(predicate: #Predicate { $0.ownerKey == owner })).map { row in
+            let state = statesByID[row.id]
+            return GradingReportChange(report: try decoder.decode(GradingReportDocument.self, from: row.payload), baseRevision: state?.serverRevision ?? 0, deleted: state?.deletedAt != nil, dirty: state?.dirty ?? true)
+        }
+    }
+
+    func acknowledgeGradingReport(id: UUID, revision: Int64, deleted: Bool) throws {
+        guard let row = try context.fetch(FetchDescriptor<LocalGradingReport>(predicate: #Predicate { $0.id == id })).first else { return }
+        guard row.ownerKey == ownerKey else { throw LocalStoreError.ownerMismatch }
+        let state = try gradingReportState(id: id)
+        state.serverRevision = revision; state.dirty = false
+        if deleted { state.deletedAt = state.deletedAt ?? .now }
+        try commit()
+    }
+
+    func applyRemoteGradingReport(_ report: GradingReportDocument, revision: Int64) throws {
+        let id = report.id
+        if let row = try context.fetch(FetchDescriptor<LocalGradingReport>(predicate: #Predicate { $0.id == id })).first {
+            guard row.ownerKey == ownerKey else { throw LocalStoreError.ownerMismatch }
+            let state = try gradingReportState(id: id)
+            state.serverRevision = revision
+            if !state.dirty {
+                row.payload = try encoder.encode(report); state.deletedAt = nil
+            }
+        } else {
+            context.insert(LocalGradingReport(document: report, ownerKey: ownerKey, payload: try encoder.encode(report)))
+            let state = LocalGradingReportSyncState(reportID: id, ownerKey: ownerKey)
+            state.serverRevision = revision; state.dirty = false
+            context.insert(state)
+        }
+        try commit()
     }
 
     func draftChanges() throws -> [DraftChange] {
@@ -476,15 +552,7 @@ enum LocalStoreError: LocalizedError {
     }
 
     func exportData() throws -> Data {
-        struct Backup: Encodable {
-            let schemaVersion: Int
-            let exportedAt: Date
-            let drafts: [DraftDocument]
-            let submissions: [SubmissionDocument]
-            let reports: [GradingReportDocument]
-            let favorites: [FavoriteDocument]
-            let notebook: [NotebookEntry]
-        }
-        return try encoder.encode(Backup(schemaVersion: 3, exportedAt: .now, drafts: drafts(), submissions: submissions(), reports: gradingReports(), favorites: favorites(), notebook: notebookChanges().map(\.entry).filter { $0.deletedAt == nil }))
+        let backup = try WritingBackup(schemaVersion: 3, exportedAt: .now, drafts: drafts(), submissions: submissions(), reports: gradingReports(), favorites: favorites(), notebook: notebookChanges().map(\.entry).filter { $0.deletedAt == nil })
+        return try encoder.encode(backup)
     }
 }

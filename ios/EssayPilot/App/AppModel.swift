@@ -10,6 +10,8 @@ import Foundation
     @Published private(set) var notebook: [NotebookEntry] = []
     @Published private(set) var favorites: [FavoriteDocument] = []
     @Published private(set) var syncState = "未同步"
+    @Published private(set) var pendingSyncCount = 0
+    @Published private(set) var isOfflineRestore = false
     /// Bumps after each successful merge of the account's cat, so the desk reloads what came back.
     @Published private(set) var companionRevision = 0
     @Published private(set) var account: AccountSession?
@@ -29,7 +31,7 @@ import Foundation
     private let authService: (any AuthService)?
     private let gradingService: (any GradingService)?
     private let syncTransport: (any SyncTransport)?
-    private let storeRoot: URL?
+    let storeRoot: URL?
     private var hasRestoredSession = false
     private var isSigningOut = false
 
@@ -71,20 +73,36 @@ import Foundation
     }
 
     var canAuthenticate: Bool { authService != nil }
-    var canGrade: Bool { account != nil && gradingService != nil }
+    var canGrade: Bool { account != nil && gradingService != nil && !isOfflineRestore }
+    private var sessionCache: LocalSessionCache {
+        var namespace = storeRoot?.standardizedFileURL.path ?? "default"
+        #if DEBUG
+        let args = ProcessInfo.processInfo.arguments
+        if let index = args.firstIndex(of: "-ui-test-store"), args.indices.contains(index + 1) { namespace += args[index + 1] }
+        #endif
+        return LocalSessionCache(defaults: .standard, namespace: namespace)
+    }
 
     func observeAuth() async {
         guard !hasRestoredSession else { return }
         hasRestoredSession = true
-        do { activate(try await authService?.currentSession()) }
-        catch { authErrorMessage = "未能恢复登录，请稍后重试。" }
+        do {
+            activate(try await authService?.currentSession())
+            isOfflineRestore = false
+        } catch {
+            if let cached = sessionCache.load() {
+                activate(cached); isOfflineRestore = true; syncState = "离线，本机可用"
+                authErrorMessage = "当前离线，已打开这台设备上的练习。联网后可登录并同步。"
+            } else { authErrorMessage = "未能恢复登录，请稍后重试。" }
+        }
         await refreshActiveGradingJobs()
         guard let authService else { return }
         for await session in authService.sessionChanges {
+            if session == nil, isOfflineRestore { continue }
             if session == nil, account != nil, !isSigningOut {
                 authErrorMessage = "登录已失效，请重新登录。"
             }
-            activate(session)
+            activate(session); isOfflineRestore = false
             await refreshActiveGradingJobs()
         }
     }
@@ -233,6 +251,7 @@ import Foundation
     }
 
     private func activate(_ session: AccountSession?) {
+        sessionCache.save(session)
         guard account?.userID != session?.userID else { account = session; return }
         for task in pollingTasks.values { task.cancel() }
         pollingTasks.removeAll()
@@ -270,7 +289,17 @@ import Foundation
         gradingJobs = try repository.gradingJobs(); gradingReports = try repository.gradingReports()
         drafts = try repository.drafts(); submissions = try repository.submissions()
         favorites = try repository.favorites()
-        notebook = try repository.notebookChanges().map(\.entry).filter { $0.deletedAt == nil }
+        let notes = try repository.notebookChanges()
+        notebook = notes.map(\.entry).filter { $0.deletedAt == nil }
+        pendingSyncCount = try repository.draftChanges().filter(\.dirty).count
+            + repository.favoriteChanges().filter(\.dirty).count
+            + repository.gradingReportChanges().filter(\.dirty).count
+            + notes.filter(\.dirty).count
+    }
+
+    var syncStatusDetail: String {
+        if syncState == "正在同步" { return syncState }
+        return pendingSyncCount > 0 ? "\(syncState) · \(pendingSyncCount) 项待同步" : syncState
     }
 
     func submitGrading(_ draft: DraftDocument) async -> GradingJobDocument? {
@@ -442,6 +471,11 @@ import Foundation
         catch { errorMessage = "未能删除草稿，请重试。" }
     }
 
+    func delete(_ report: GradingReportDocument) {
+        do { try repository?.deleteGradingReport(id: report.id); try reload() }
+        catch { errorMessage = "未能删除报告，请重试。" }
+    }
+
     func transcribeImage(_ image: Data) async throws -> ImageTranscriptionResponse {
         guard let gradingService, canGrade else { throw GradingServiceError.invalidResponse }
         let owner = account?.userID
@@ -524,15 +558,18 @@ import Foundation
         guard let owner = account?.userID else { throw AuthServiceError.invalidSession }
         let cache = try? reportPhotoCache()
         if let cached = cache?.data(for: source) { return cached }
-        if let local = uploadedOriginal(for: source) { try? cache?.store(local, for: source); return local }
+        if let local = uploadedOriginal(for: source) {
+            try? cache?.store(local, for: source); _ = try? trimReportPhotoCache()
+            return local
+        }
         guard let gradingService, canGrade else { throw AuthServiceError.invalidSession }
         let data = try await gradingService.photoData(source)
         guard account?.userID == owner else { throw AuthServiceError.invalidSession }
-        try? cache?.store(data, for: source)
+        try? cache?.store(data, for: source); _ = try? trimReportPhotoCache()
         return data
     }
 
-    private func reportPhotoCache() throws -> ReportPhotoCache {
+    func reportPhotoCache() throws -> ReportPhotoCache {
         guard let account else { throw AuthServiceError.invalidSession }
         let root = try storeRoot ?? FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
         return ReportPhotoCache(root: root.appendingPathComponent("JuGuang/accounts/\(account.userID.uuidString)/report-photos"))
@@ -702,8 +739,7 @@ import Foundation
 
     func keep(expression: ReviewExpression, report: GradingReportDocument) {
         guard let repository else { return }
-        let sentence = report.sentences.first { $0.id == report.report.corrections.first?.sentenceID }?.original
-            ?? report.sentences.first?.original ?? ""
+        let sentence = FavoriteSourceLocator.sentence(for: expression, in: report)
         let incoming = FavoriteDocument.make(
             expression: expression.expression, meaning: expression.meaning, usage: expression.usage,
             reportID: report.id, sentence: sentence
@@ -745,13 +781,6 @@ import Foundation
         if FileManager.default.fileExists(atPath: folder.path) {
             try FileManager.default.removeItem(at: folder)
         }
-    }
-
-    func exportURL() throws -> URL {
-        guard let repository else { throw LocalStoreError.unavailable }
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("WriteRight-练习备份.json")
-        try repository.exportData().write(to: url, options: [.atomic, .completeFileProtection])
-        return url
     }
 
     private static func validEmail(_ email: String) -> Bool {

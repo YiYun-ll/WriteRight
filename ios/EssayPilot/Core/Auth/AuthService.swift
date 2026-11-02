@@ -1,7 +1,7 @@
 import Foundation
 import Supabase
 
-struct AccountSession: Equatable, Sendable {
+struct AccountSession: Codable, Equatable, Sendable {
     let userID: UUID
     let email: String
 }
