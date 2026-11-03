@@ -8,12 +8,14 @@
 
 /* Begin PBXBuildFile section */
 		015A3E8465037E4C6DBA6545 /* HomeDeskTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F5B34D8360309B574F8EFE7 /* HomeDeskTests.swift */; };
+		02956D667C5619FEEE157151 /* SystemWidgetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E065A667F7ABE043F28F291 /* SystemWidgetTests.swift */; };
 		037C7122CE04E650D736042B /* FavoriteSourceLocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 121269427A4BBEB3A060AB62 /* FavoriteSourceLocator.swift */; };
 		0610BD2D827E7372CCDD3697 /* NotebookEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C2759FA05BA1B5E856E638C /* NotebookEntry.swift */; };
 		065204DCA03A6C09E474F9FF /* NicknameFlowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39307F519756BFC91A3039BA /* NicknameFlowTests.swift */; };
 		073F033D58FCDFAF878C0DD3 /* FocusActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECBAADCDF04BD5161CBD5F17 /* FocusActivityAttributes.swift */; };
 		07C0FBCD52185176ADD7869E /* AppModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46129FCA488F05615591B712 /* AppModel.swift */; };
 		07C69EEF7DDF0B1B661E2FFE /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 1B0DAB415F9ADBACDEBBC49E /* Supabase */; };
+		084EF6D217E878735D8BBA37 /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07B9DFF635F0F1974AE98134 /* WidgetSnapshot.swift */; };
 		0AD5CC8299DF9A5D6001F68D /* HistoryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DBA4D09FCC75B9DE42AA78B6 /* HistoryView.swift */; };
 		20B00FA3D95BC8B56E0C0491 /* DeskExperienceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96E339F46DFEBA8A4AB2DA24 /* DeskExperienceTests.swift */; };
 		235B8CA0DDA673DCF535EA46 /* CompanionModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1ABE10C939905858E9F8D9B /* CompanionModel.swift */; };
@@ -48,6 +50,7 @@
 		63DC78DC30299F4012FA3D4F /* ProfileNicknameCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 22FAD9D47328158095DF403A /* ProfileNicknameCache.swift */; };
 		653EEBDDBD611E6EF66F82F4 /* ExamSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = F61C8C7AF75AEF7E0BD17AC9 /* ExamSchedule.swift */; };
 		657D559A680B4CCA20ABC235 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27144391513644A5D0CABE3 /* ContentView.swift */; };
+		668F9018C9E8227F156F8D1D /* ProfileAvatarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F0EDBD76B98A36D5BA8A661 /* ProfileAvatarView.swift */; };
 		68C7F863CD00C8939410B509 /* RewriteReadingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 874DE9ADAC376F27681ADA77 /* RewriteReadingView.swift */; };
 		6B79B233CE19DEAACB0C19E4 /* ExamDesk.swift in Sources */ = {isa = PBXBuildFile; fileRef = 225F0BC6A741E7E7A6DDECB4 /* ExamDesk.swift */; };
 		6BFF742609B2AB3689EF90FA /* LocalSessionCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A7ACAEED2796F29CE500E4C /* LocalSessionCache.swift */; };
@@ -80,12 +83,15 @@
 		A973E264B187D50429E2DF87 /* NotebookPresentationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BCDAA589DFB2B6789CED3B02 /* NotebookPresentationTests.swift */; };
 		AB9414B88C067E4B367E5401 /* BackendConnectivityProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = F427475CEDD21C45BB79A797 /* BackendConnectivityProbe.swift */; };
 		AC9B744D83C386917C3134DB /* EssayEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 000E034A5FA64595FC7411E7 /* EssayEditorView.swift */; };
+		AD5F922F74A7E749CFB1B304 /* ProfileWidgetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72BFC7DF57592A63FCE686BC /* ProfileWidgetTests.swift */; };
 		B04E021884C33A0CB8E32E4A /* NicknameEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4562F090AB36F49AB25DD7F /* NicknameEditorView.swift */; };
 		B20F3B90D84ADA68503428DE /* QuietDeskScene.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7269F41721CBFF46B67C1C3 /* QuietDeskScene.swift */; };
+		BBB75A614BE883D68A640551 /* ProfileCustomizationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA8DC9A814BC0ADE4D8A4F5E /* ProfileCustomizationTests.swift */; };
 		BBEFF347596A08912DD4DEC3 /* BackupDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53C3F4250961215578DFAE23 /* BackupDocument.swift */; };
 		C350E4D8CC02084E0B00183B /* DeskAtmosphereTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6141D1C5E84988CEC8DA62A4 /* DeskAtmosphereTests.swift */; };
 		C891B0805C3C24930BB26030 /* ReportPhotoCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB3375249F84664A4B74E7FE /* ReportPhotoCache.swift */; };
 		C92DB52734574752D4E7A1A4 /* AccountViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F5389BA706047143756F85D /* AccountViews.swift */; };
+		CBD7AFF84FD0E4B393B22AE1 /* ProfileImageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B04204F55D9064DCA0B414 /* ProfileImageStore.swift */; };
 		CFB3F26B6F6C86C6A830E903 /* FocusActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = ECBAADCDF04BD5161CBD5F17 /* FocusActivityAttributes.swift */; };
 		D15C127DBD0787645F5E6880 /* AuthFailureMessage.swift in Sources */ = {isa = PBXBuildFile; fileRef = B72A6204DD06590277E05E0D /* AuthFailureMessage.swift */; };
 		D1A8AB98DE779634833F137D /* HomeDeskModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86FED7CE58185695ACADE4C4 /* HomeDeskModel.swift */; };
@@ -94,6 +100,7 @@
 		D8A838AD8E23EA465AFFFCAF /* DevelopmentAdviceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AC2D474A757850F3E197BD8 /* DevelopmentAdviceView.swift */; };
 		D98FB95662AAA3E5879E450C /* DeskArt.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72D688AEF7769FB6DFA14E28 /* DeskArt.swift */; };
 		DD435383C633594308E1E36A /* NotebookPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3ADE0723D080A998D075ACD /* NotebookPresentation.swift */; };
+		DF542387C652E2878F02BEB9 /* WidgetSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43C596C5A3ABE00865E4447C /* WidgetSettingsView.swift */; };
 		E06A4471393D2E2C209A4B05 /* LocalWritingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2428EB1A27653D52E15503B /* LocalWritingStore.swift */; };
 		E0703FE49C8EE469C5E6F60C /* FocusActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A2A5BE7E35AF6E73A6EBBD2 /* FocusActivityWidget.swift */; };
 		E0B58D8F6B1A9EF3636DFD44 /* GradingService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 762FA9013B841A08028B2D0E /* GradingService.swift */; };
@@ -112,6 +119,7 @@
 		F93D6C707B216E7F578171FA /* ReadingProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F09921ADE2118FF0EB19F9B7 /* ReadingProgressView.swift */; };
 		FA6368E3EC654D96792B5D01 /* InteractiveDeskView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E39429A9A015EAFAA5C237E /* InteractiveDeskView.swift */; };
 		FBE09B138A304AFDDFB40211 /* SyncEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A33F709EC0E105964194D1E2 /* SyncEngine.swift */; };
+		FC8B40FDA86BBE82DF9CA5C9 /* WidgetSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 07B9DFF635F0F1974AE98134 /* WidgetSnapshot.swift */; };
 		FDAAF476AA3FA01FF355A2C4 /* EssayPilotApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC090603A91588ACD9D4F374 /* EssayPilotApp.swift */; };
 /* End PBXBuildFile section */
 
@@ -158,6 +166,7 @@
 		00738743BE0B9B0069092122 /* DeskCompanion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeskCompanion.swift; sourceTree = "<group>"; };
 		037B7D562B40C5A5CDBAFA9E /* ReportReading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReportReading.swift; sourceTree = "<group>"; };
 		06ACBF16F10F76EAE049594E /* CompanionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionCard.swift; sourceTree = "<group>"; };
+		07B9DFF635F0F1974AE98134 /* WidgetSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSnapshot.swift; sourceTree = "<group>"; };
 		0A7ACAEED2796F29CE500E4C /* LocalSessionCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalSessionCache.swift; sourceTree = "<group>"; };
 		0C2759FA05BA1B5E856E638C /* NotebookEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookEntry.swift; sourceTree = "<group>"; };
 		1094551B70287BC98401AB41 /* GlassSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlassSurface.swift; sourceTree = "<group>"; };
@@ -180,6 +189,7 @@
 		3F1DBFDDE8BA34FAAB28E76C /* ScanReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanReviewView.swift; sourceTree = "<group>"; };
 		3F5B34D8360309B574F8EFE7 /* HomeDeskTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeDeskTests.swift; sourceTree = "<group>"; };
 		425359ECD5233E33C7663BC9 /* NotebookEditorModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookEditorModel.swift; sourceTree = "<group>"; };
+		43C596C5A3ABE00865E4447C /* WidgetSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetSettingsView.swift; sourceTree = "<group>"; };
 		442038185D17765F5DF226CE /* WriteRightWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WriteRightWidgets.swift; sourceTree = "<group>"; };
 		46129FCA488F05615591B712 /* AppModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppModel.swift; sourceTree = "<group>"; };
 		46EC1B9CB9A40D4DBAB7B051 /* PhotoPracticeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPracticeView.swift; sourceTree = "<group>"; };
@@ -187,6 +197,7 @@
 		4946DA2A32FF3B42BF9AF1BB /* AccountTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountTests.swift; sourceTree = "<group>"; };
 		4975A0DAC8AA96154D5EB695 /* ReliabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReliabilityTests.swift; sourceTree = "<group>"; };
 		4D941A1985358539C480787E /* RewriteReadingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RewriteReadingTests.swift; sourceTree = "<group>"; };
+		4F0EDBD76B98A36D5BA8A661 /* ProfileAvatarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileAvatarView.swift; sourceTree = "<group>"; };
 		529711E863F2B995BDEB9C01 /* ScanService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanService.swift; sourceTree = "<group>"; };
 		53C3F4250961215578DFAE23 /* BackupDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupDocument.swift; sourceTree = "<group>"; };
 		5AC2D474A757850F3E197BD8 /* DevelopmentAdviceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevelopmentAdviceView.swift; sourceTree = "<group>"; };
@@ -195,9 +206,11 @@
 		686A33C9084A875A95245E6E /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		68A46FC6910B343823A98F9A /* NotebookFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookFlowTests.swift; sourceTree = "<group>"; };
 		6C6BAA8D5FE70D4F5E9003DC /* GradingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GradingTests.swift; sourceTree = "<group>"; };
+		6E065A667F7ABE043F28F291 /* SystemWidgetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemWidgetTests.swift; sourceTree = "<group>"; };
 		6E39429A9A015EAFAA5C237E /* InteractiveDeskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InteractiveDeskView.swift; sourceTree = "<group>"; };
 		6F5389BA706047143756F85D /* AccountViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountViews.swift; sourceTree = "<group>"; };
 		7172A52C70B0B2ABAAB7D627 /* ScanImageStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScanImageStore.swift; sourceTree = "<group>"; };
+		72BFC7DF57592A63FCE686BC /* ProfileWidgetTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileWidgetTests.swift; sourceTree = "<group>"; };
 		72D688AEF7769FB6DFA14E28 /* DeskArt.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeskArt.swift; sourceTree = "<group>"; };
 		762FA9013B841A08028B2D0E /* GradingService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GradingService.swift; sourceTree = "<group>"; };
 		7B762B95F5E927D72B0F1A52 /* NotebookView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotebookView.swift; sourceTree = "<group>"; };
@@ -246,6 +259,7 @@
 		DBA4D09FCC75B9DE42AA78B6 /* HistoryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HistoryView.swift; sourceTree = "<group>"; };
 		DBD0950267B172BD6F88F8E7 /* LearningViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LearningViews.swift; sourceTree = "<group>"; };
 		E492426B313E7A895B7AF751 /* ImageUploadTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageUploadTests.swift; sourceTree = "<group>"; };
+		E4B04204F55D9064DCA0B414 /* ProfileImageStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileImageStore.swift; sourceTree = "<group>"; };
 		E507F0A1981B67194E7967BE /* CompanionPetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompanionPetView.swift; sourceTree = "<group>"; };
 		E62B1F813522A7CB2AE03F5F /* EssayPilot.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = EssayPilot.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E6724F04FABACA47873C9E14 /* PhotoPracticeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPracticeTests.swift; sourceTree = "<group>"; };
@@ -257,6 +271,7 @@
 		F61C8C7AF75AEF7E0BD17AC9 /* ExamSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExamSchedule.swift; sourceTree = "<group>"; };
 		F7269F41721CBFF46B67C1C3 /* QuietDeskScene.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuietDeskScene.swift; sourceTree = "<group>"; };
 		F7D844418D3C7EFBC76ED1A7 /* StorageSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageSettingsView.swift; sourceTree = "<group>"; };
+		FA8DC9A814BC0ADE4D8A4F5E /* ProfileCustomizationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileCustomizationTests.swift; sourceTree = "<group>"; };
 		FB1CB5FAD57FB450D8DB2F81 /* GradingReportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GradingReportView.swift; sourceTree = "<group>"; };
 		FC03837998A7596B26C9EA56 /* PhotoPracticeFlowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPracticeFlowTests.swift; sourceTree = "<group>"; };
 		FC090603A91588ACD9D4F374 /* EssayPilotApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EssayPilotApp.swift; sourceTree = "<group>"; };
@@ -333,6 +348,7 @@
 				3C3E0C01940C98D91BD0A8F9 /* NotebookTests.swift */,
 				C99B3B2502FC70454F95AB77 /* OCRLayoutTests.swift */,
 				E6724F04FABACA47873C9E14 /* PhotoPracticeTests.swift */,
+				72BFC7DF57592A63FCE686BC /* ProfileWidgetTests.swift */,
 				4975A0DAC8AA96154D5EB695 /* ReliabilityTests.swift */,
 				4D941A1985358539C480787E /* RewriteReadingTests.swift */,
 				BB6AC2EFCBCDF8A40CB11991 /* ScanImageStoreTests.swift */,
@@ -370,6 +386,14 @@
 				686A33C9084A875A95245E6E /* Assets.xcassets */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		27616403901ECA6CBD621EEB /* Profile */ = {
+			isa = PBXGroup;
+			children = (
+				E4B04204F55D9064DCA0B414 /* ProfileImageStore.swift */,
+			);
+			path = Profile;
 			sourceTree = "<group>";
 		};
 		2842F01AE3473FC90C5D8836 /* Design */ = {
@@ -421,8 +445,10 @@
 			children = (
 				6F5389BA706047143756F85D /* AccountViews.swift */,
 				F4562F090AB36F49AB25DD7F /* NicknameEditorView.swift */,
+				4F0EDBD76B98A36D5BA8A661 /* ProfileAvatarView.swift */,
 				2502126F8B87B168E8CC3426 /* SettingsView.swift */,
 				F7D844418D3C7EFBC76ED1A7 /* StorageSettingsView.swift */,
+				43C596C5A3ABE00865E4447C /* WidgetSettingsView.swift */,
 			);
 			path = Settings;
 			sourceTree = "<group>";
@@ -468,6 +494,7 @@
 			children = (
 				F61C8C7AF75AEF7E0BD17AC9 /* ExamSchedule.swift */,
 				ECBAADCDF04BD5161CBD5F17 /* FocusActivityAttributes.swift */,
+				07B9DFF635F0F1974AE98134 /* WidgetSnapshot.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -509,7 +536,9 @@
 				33E2388B9003E492D33A7BFA /* NotebookCreationTests.swift */,
 				68A46FC6910B343823A98F9A /* NotebookFlowTests.swift */,
 				FC03837998A7596B26C9EA56 /* PhotoPracticeFlowTests.swift */,
+				FA8DC9A814BC0ADE4D8A4F5E /* ProfileCustomizationTests.swift */,
 				48404C21D312C398E24DFD3D /* RewriteAccessibilityTests.swift */,
+				6E065A667F7ABE043F28F291 /* SystemWidgetTests.swift */,
 				7F7BF10161BB3BBF83556900 /* WritingFlowTests.swift */,
 			);
 			path = EssayPilotUITests;
@@ -588,6 +617,7 @@
 				5BE0ADEF8DEEEA67E3F8E058 /* Auth */,
 				2842F01AE3473FC90C5D8836 /* Design */,
 				2CCDDA4172CA5F151D62454F /* Grading */,
+				27616403901ECA6CBD621EEB /* Profile */,
 				F91BFF40C609716C30AD4CE7 /* Scanning */,
 				37C03F0774DBFB6B2DE2E028 /* Sync */,
 				3D8B0E202F6DEBA267B558C8 /* Text */,
@@ -762,7 +792,9 @@
 				528046B8522812B114DC68CA /* NotebookCreationTests.swift in Sources */,
 				6C708A666E90D0CF8AE88A71 /* NotebookFlowTests.swift in Sources */,
 				3600A4982DDC8A904CCF87BF /* PhotoPracticeFlowTests.swift in Sources */,
+				BBB75A614BE883D68A640551 /* ProfileCustomizationTests.swift in Sources */,
 				3E1F991F3CD691C59E72BA32 /* RewriteAccessibilityTests.swift in Sources */,
+				02956D667C5619FEEE157151 /* SystemWidgetTests.swift in Sources */,
 				9F99BA69EDD4B90D36CAE86D /* WritingFlowTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -784,6 +816,7 @@
 				E0FBF33BB8C1FAFE14713942 /* NotebookTests.swift in Sources */,
 				8357886C8BF536E855A0DB06 /* OCRLayoutTests.swift in Sources */,
 				E2D31DFE78225305FE66F5DF /* PhotoPracticeTests.swift in Sources */,
+				AD5F922F74A7E749CFB1B304 /* ProfileWidgetTests.swift in Sources */,
 				E9262AE4A95B228DEF76B36D /* ReliabilityTests.swift in Sources */,
 				F8A8157AA8C3A625222348B3 /* RewriteReadingTests.swift in Sources */,
 				425A8F7BD9E2FDF1A592AD4B /* ScanImageStoreTests.swift in Sources */,
@@ -842,6 +875,8 @@
 				9C0D11FDEC5670E4EDB47FCD /* OCRLayout.swift in Sources */,
 				5250175E2C7726BED54AC5DC /* PhotoPracticeModel.swift in Sources */,
 				94EBE6DCF3A3D4A58551A7D0 /* PhotoPracticeView.swift in Sources */,
+				668F9018C9E8227F156F8D1D /* ProfileAvatarView.swift in Sources */,
+				CBD7AFF84FD0E4B393B22AE1 /* ProfileImageStore.swift in Sources */,
 				63DC78DC30299F4012FA3D4F /* ProfileNicknameCache.swift in Sources */,
 				B20F3B90D84ADA68503428DE /* QuietDeskScene.swift in Sources */,
 				F93D6C707B216E7F578171FA /* ReadingProgressView.swift in Sources */,
@@ -860,6 +895,8 @@
 				FBE09B138A304AFDDFB40211 /* SyncEngine.swift in Sources */,
 				25A86B0E280E892AE76F9B94 /* Theme.swift in Sources */,
 				D53A49E6173687A0C8F0CDAD /* UndoRemoval.swift in Sources */,
+				DF542387C652E2878F02BEB9 /* WidgetSettingsView.swift in Sources */,
+				084EF6D217E878735D8BBA37 /* WidgetSnapshot.swift in Sources */,
 				3288E3D69EF5ECFEC2E5D790 /* WritingDocument.swift in Sources */,
 				63098A28D1F87D0F6681C84E /* WritingText.swift in Sources */,
 			);
@@ -872,6 +909,7 @@
 				653EEBDDBD611E6EF66F82F4 /* ExamSchedule.swift in Sources */,
 				073F033D58FCDFAF878C0DD3 /* FocusActivityAttributes.swift in Sources */,
 				E0703FE49C8EE469C5E6F60C /* FocusActivityWidget.swift in Sources */,
+				FC8B40FDA86BBE82DF9CA5C9 /* WidgetSnapshot.swift in Sources */,
 				5BB9ABE19BD263EFDD6407E2 /* WriteRightWidgets.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -958,7 +996,8 @@
 		31529CB6A3D13A8010ED6566 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = Config/Widget.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = Config/WidgetDevice.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = Config/Widget.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Config/WidgetInfo.plist;
@@ -977,7 +1016,7 @@
 			baseConfigurationReference = 7D8A3FF55AC6340332BEFACF /* Development.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = Config/Shared.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = Config/Device.entitlements;
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = Config/Simulator.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
@@ -1021,7 +1060,7 @@
 			baseConfigurationReference = 98E6C4F773C66BA5902A495E /* Release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = Config/Shared.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = Config/Device.entitlements;
 				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = Config/Simulator.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CURRENT_PROJECT_VERSION = 1;
@@ -1046,7 +1085,8 @@
 		61684E7AFB2D1601770A12C1 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = Config/Widget.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]" = Config/WidgetDevice.entitlements;
+				"CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]" = Config/Widget.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = Config/WidgetInfo.plist;

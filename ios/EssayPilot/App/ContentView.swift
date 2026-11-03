@@ -53,6 +53,11 @@ struct ContentView: View {
         }
         .background(WriteRightTheme.background)
         .task { await model.observeAuth() }
+        .onOpenURL { url in
+            guard url.scheme == "writeright" else { return }
+            if url.host == "records" { presented = nil; selection = .records }
+            else if url.host == "home" { presented = nil; selection = .home }
+        }
         .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await model.refreshActiveGradingJobs() } } }
         .onChange(of: model.account?.userID) { old, _ in
             if old == nil, case .photos = presented { return }

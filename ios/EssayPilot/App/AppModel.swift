@@ -1,5 +1,6 @@
 import Combine
 import Foundation
+import WidgetKit
 
 @MainActor final class AppModel: ObservableObject {
     @Published private(set) var drafts: [DraftDocument] = []
@@ -15,6 +16,53 @@ import Foundation
     /// Bumps after each successful merge of the account's cat, so the desk reloads what came back.
     @Published private(set) var companionRevision = 0
     @Published private(set) var account: AccountSession?
+    @Published private(set) var avatarData: Data?
+    var profileOwner: String { account?.userID.uuidString ?? "guest" }
+    private var profileImages: ProfileImageStore {
+        ProfileImageStore(root: storeRoot ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0])
+    }
+    func saveAvatar(_ data: Data, owner: String) async {
+        let store = profileImages
+        do {
+            let normalized = try await Task.detached { try ProfileImageStore.normalized(data, size: 640) }.value
+            guard profileOwner == owner else { return }
+            avatarData = try store.save(normalized, owner: owner)
+        } catch { if profileOwner == owner { errorMessage = "头像未能保存，请选择有效照片后重试。" } }
+    }
+    func removeAvatar() {
+        do { try profileImages.erase(owner: profileOwner); avatarData = nil }
+        catch { errorMessage = "头像未能移除，请重试。" }
+    }
+    var widgetRecordsEnabled: Bool { UserDefaults.standard.bool(forKey: "widget.records.\(profileOwner)") }
+    func setWidgetRecordsEnabled(_ enabled: Bool) {
+        UserDefaults.standard.set(enabled, forKey: "widget.records.\(profileOwner)")
+        publishWidgetSnapshot()
+        objectWillChange.send()
+    }
+    func publishWidgetSnapshot() {
+        let active = notebook.filter { !$0.completed && $0.deletedAt == nil }.sorted {
+            if $0.pinned != $1.pinned { return $0.pinned }
+            if $0.dueDate != $1.dueDate { return ($0.dueDate ?? .distantFuture) < ($1.dueDate ?? .distantFuture) }
+            return $0.createdAt > $1.createdAt
+        }
+        func records(_ kind: NotebookEntry.Kind) -> [WidgetRecord] {
+            active.filter { $0.kind == kind }.prefix(4).map {
+                WidgetRecord(id: $0.id, title: String($0.title.prefix(100)), detail: kind == .link ? ($0.safeURL?.host ?? "") : ($0.dueDate?.formatted(.dateTime.month().day()) ?? ""))
+            }
+        }
+        let snapshot = widgetRecordsEnabled ? WidgetSnapshot(enabled: true, tasks: records(.task), links: records(.link)) : WidgetSnapshot()
+        let changed = WidgetSnapshotStore.write(snapshot)
+        if changed || WidgetSnapshotStore.replicateBackground() { WidgetCenter.shared.reloadAllTimelines() }
+    }
+    func saveWidgetBackground(_ data: Data) async throws {
+        let normalized = try await Task.detached { try ProfileImageStore.normalized(data, size: 1000) }.value
+        try WidgetSnapshotStore.writeBackground(normalized)
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+    func removeWidgetBackground() throws {
+        try WidgetSnapshotStore.removeBackground()
+        WidgetCenter.shared.reloadAllTimelines()
+    }
     @Published private(set) var nickname: String?
     @Published private(set) var isNicknameLoading = false
     @Published private(set) var isNicknameSaving = false
@@ -237,6 +285,8 @@ import Foundation
     }
 
     func openStore() {
+        WidgetSnapshotStore.write(WidgetSnapshot()); WidgetCenter.shared.reloadAllTimelines()
+        avatarData = profileImages.load(owner: profileOwner)
         repository = nil; drafts = []; submissions = []; gradingJobs = []; gradingReports = []; gradingConnectionIssues = [:]
         notebook = []; favorites = []; isReady = false
         do {
@@ -291,6 +341,7 @@ import Foundation
         favorites = try repository.favorites()
         let notes = try repository.notebookChanges()
         notebook = notes.map(\.entry).filter { $0.deletedAt == nil }
+        publishWidgetSnapshot()
         pendingSyncCount = try repository.draftChanges().filter(\.dirty).count
             + repository.favoriteChanges().filter(\.dirty).count
             + repository.gradingReportChanges().filter(\.dirty).count
@@ -771,6 +822,8 @@ import Foundation
         guard let removed else { return }
         companionStore.erase(owner: removed.userID.uuidString); LegacyDeskNote.erase(owner: removed.userID.uuidString)
         nicknameCache.erase(removed.userID)
+        try? profileImages.erase(owner: removed.userID.uuidString)
+        UserDefaults.standard.removeObject(forKey: "widget.records.\(removed.userID.uuidString)")
         do { try removeAccountFiles(removed) }
         catch { errorMessage = "账号已删除，但这台设备上的部分本机文件未能清理。可以稍后删除 App 来彻底清除。" }
     }

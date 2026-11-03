@@ -2,6 +2,8 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+    <key>CFBundleURLTypes</key>
+    <array><dict><key>CFBundleURLSchemes</key><array><string>writeright</string></array><key>CFBundleURLName</key><string>com.yiyun.essaypilot</string></dict></array>
     <key>SUPABASE_URL</key>
     <string>https://$(SUPABASE_HOST)</string>
     <key>SUPABASE_PUBLISHABLE_KEY</key>

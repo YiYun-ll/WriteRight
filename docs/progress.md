@@ -1,8 +1,10 @@
 # 开发进度
 
-日期：2026-10-29（Asia/Shanghai）。产品名称：**WriteRight**，用户指定。代码模块：EssayPilot。私有仓库：WriteRight。
+日期：2026-11-03（Asia/Shanghai）；以下保留逐轮历史记录。产品名称：**WriteRight**，用户指定。代码模块：EssayPilot。私有仓库：WriteRight。
 
 执行依据：[分阶段开发计划](../WriteRight_分阶段开发计划.md)。初版需求作为待实现规格保留，没有把规格当作完成证据。
+
+截至 2026-11-03：P0–P8 主体已实现并有分项检查证据；照片批改采用题图/作文图一起直送 AI，历史 OCR 文档仅兼容读取。P9 完整真机与外部验收仍未完成。最新实现见文末「2026-11-03 账号中心与系统展示」，同日已把 0.2.0（4）覆盖安装到已连接的 iPhone 18 Pro。不能把下方早期 OCR/安装阻塞记录当成当前状态。
 
 ## 首页与练习（2026-10-29）
 
@@ -540,3 +542,45 @@
 - `scripts/package-ios-sideload.sh` 改为在去掉设备描述文件后，用临时签名把 `group.com.yiyun.essaypilot.shared` 写入主应用和 `WriteRightWidgets.appex`，并附上 `archived-expanded-entitlements.xcent`。不导出私钥。
 - 实际生成 `artifacts/sideload-20261102-170228/WriteRight-0.2.0-3-sideload.ipa`（5,688,226 字节，SHA-256 `ce81849c6659ba7801354e8de6345a4fc7fded70882f0b049904c89595b915e5`）。解压后主应用与小组件都能读到该 App Group，无 `embedded.mobileprovision`，`NSSupportsLiveActivities` 为 true，扩展点为 WidgetKit。公开云配置检查通过。
 - 接收方需要用会单独登记扩展的工具安装，当前对应 Sideloadly，且不要移除扩展。尚未在接收方手机上安装，不能把包结构检查说成灵动岛已经出现。未部署、未改生产数据。
+
+## 2026-11-03 账号中心与系统展示（无手机）
+
+### 本轮实现
+
+- 头像：我的顶部独立头像入口，系统 PhotosPicker 单选、更换与恢复默认；ImageIO 缩至640像素并重新编码去除元数据，按游客/账号保存在本机，退出隔离、删号清理。选择照片期间切换账号，晚到结果不会覆盖新账号头像。头像暂不跨设备同步，界面明确说明。
+- 我的：紧凑标准导航标题、独立账号卡片、实际练习/报告/收藏数量、「学习记录 / 数据管理 / 通用」分组；省去入口抒情副标题和页尾口号。保留昵称、账号管理、同步、备份、缓存、隐私等既有实际功能。
+- 小组件：以原 kind 升级 AppIntentConfiguration，支持每个组件独立选择倒计时/待办/灵感链接，以及暖纸/鼠尾草/午夜/自选照片背景；小号/中号布局。自选照片本机共用，1000像素压缩去元数据，深色遮罩保证文字对比；支持移除背景。
+- 记录共享：默认关闭，用户在「我的 → 桌面小组件」明确开启后，才向 App Group 导出最多4条未完成且未删除的待办/链接标题与日期/域名。置顶优先，不共享正文；切换账号/退出/关闭时覆盖共享快照，快照变化才请求刷新。系统刷新可能延迟。点击小组件通过 writeright URL 跳转首页/记录页，并关闭旧弹层。
+- 锁屏/灵动岛：圆形书页符号、分区计时、真实进度条与暖杏色强调；展开/紧凑/最小态统一书页符号，倒计时限定开始至结束区间，到期停在零。
+
+### 实际检查与证据
+
+- `npm run env:check`、`npm run ios:generate`、`npm run ios:build` 通过；模拟器 iPhone 17 / iOS26.2，无真机。
+- 全量原生105项通过：`artifacts/ios-tests-20261103-141857.xcresult`。含新增头像压缩/损坏输入/持久化/账号隔离、晚到头像结果与记录共享过滤/退出清理；快照去重优化后另复验新增3项通过（`ios-tests-20261103-142056.xcresult`）。
+- 昵称编辑重置、陪写/账号入口等3项原有界面回归通过（`ios-tests-20261103-141536.xcresult`）；紧凑导航修改后深色Accessibility XXXL另外复验通过（`ios-tests-20261103-141857.xcresult`）。
+- 相册头像/背景的实际选择保存流程通过（`ios-tests-20261103-142056.xcresult`）。后续恢复默认与移除背景补验见下方收尾记录。
+- 系统实时活动测试通过（`ios-tests-20261103-142737.xcresult`），实际查看锁屏通知中心卡片及灵动岛紧凑/展开态。真正断网锁机、长期到期回收和真机显示仍待验收。
+- 桌面组件已真正从系统菜单添加，确认 WriteRight 图标变为小组件、实际显示46天及考试日期，系统添加测试通过（`ios-tests-20261103-143549.xcresult`）。早期仅截图但未断言组件的探索测试不算组件添加通过；最终用组件属性断言并人工查看截图。系统菜单存在 remote AX/动画超时，尝试重启模拟器 SpringBoard 后最终通过。
+- 截图：`design/previews/profile-dark-accessibility.png`、`widget-countdown-small.png`、`focus-lock-screen.png`、`focus-island-compact.png`、`focus-island-expanded.png`。未将含私人相册图片的测试截图放入设计目录。新增纯色棋盘合成图片 `tests/fixtures/profile-widget.png`，测试脚本每次导入新副本，照片测试只选择当月测试图，避免使用已有个人照片。
+
+### 边界
+
+未改后端/数据库合同、未调用模型、未部署、未安装手机。小组件系统端多内容、多尺寸、所有主题组合未逐一操作验收；原生数据合同已检查。P9不扩大为完成。相册自动化前两轮因 remote Photos 网格不可点击而失败，改用实际网格中心点后通过；不把初次失败隐去。新增恢复默认的首次断言早于对话框关闭，收尾补验等待实际消失。
+
+收尾：`artifacts/ios-tests-20261103-161025.xcresult` 的相册完整流程（合成棋盘图）通过，包含头像保存、背景保存/移除、恢复默认头像并等待实际消失。更新 `design/previews/profile.png`、`profile-avatar.png`、`widget-settings.png`。测试脚本已自动导入当次合成图；最终 `git diff --check` 通过。
+
+## 2026-11-03 覆盖安装 0.2.0（4）并重打侧载包
+
+- 已连接 yyyy（iPhone 18 Pro，iOS 27.2，有线、已配对、开发者模式已开、ddi 可用）。用当前代码覆盖安装 WriteRight 0.2.0（4）并启动，进程 13456。未卸载、未清数据。证据 `artifacts/device-0204-20261103-164726/install.json`、`launch.json`。
+- 签名 Release 使用既有 Personal Team。公开云配置检查通过。主应用签名包含 `group.com.yiyun.essaypilot.shared`。小组件描述文件的 App Group 仍为空，因此本次装到手机的小组件签名未带该组；`ios/Config/Widget.entitlements` 在构建后已核对仍声明该组。主屏幕共享数据、锁屏和灵动岛仍待描述文件补上该组后重装验收。
+- 同一签名包：`artifacts/device-0204-20261103-164726/WriteRight-0.2.0-4.ipa`（4,946,543 字节，SHA-256 `cbda639bddd92c2d5e47c1c26d1d9e3b93027ba67765ac9618ccea51fafb3792`）。含本机开发描述文件，供已注册设备重装。
+- 侧载包 `artifacts/sideload-20261103-164833/WriteRight-0.2.0-4-sideload.ipa`（5,802,215 字节，SHA-256 `e361a4443b5c4aa64dd349c39f39c158f88eabe197ab0136f24c0bdd2e7f395e`）。解压后主应用与小组件都能读到该 App Group，无 `embedded.mobileprovision`，`NSSupportsLiveActivities` 为 true，扩展点为 WidgetKit。公开云配置检查通过。接收方需自行重签；iLoader 2.4.1 仍不能单独登记扩展。
+- 安装与启动不代表真机相机、多页手写、灵动岛外观或主屏幕小组件放置通过。未部署、未调用模型、未改生产数据。P9 不标完成。
+
+## 2026-11-03 小组件照片与记录
+
+- 免费开发描述文件不能把 App Group 写进小组件。主应用写进共享目录的照片和记录，小组件读不到，于是继续显示午夜，开启「展示记录」也没有标题。时间线里再附带整张照片时，系统还可能留下上一次的午夜条目。
+- 照片和记录快照同时写入主应用钥匙串分组 `TEAMID.com.yiyun.essaypilot.dev`。真机小组件只签这个钥匙串分组，不再要求 App Group。已保存的照片在打开 App 时补写到钥匙串。模拟器和对方可登记扩展的侧载包仍优先读 App Group。
+- 只要保存了照片，小组件就改用这张照片，不再停在午夜；移除后恢复小组件里选的纯色。开启记录后，倒计时或待办显示待办标题，灵感链接显示链接。照片不再放进时间线条目。
+- `ProfileWidgetTests` 4 项通过，含去掉共享目录副本后仍能读到照片和记录，午夜主题也会改用照片。已连接的 yyyy 覆盖安装 0.2.0（5）并启动，进程 13529。主应用签名同时有 App Group 和钥匙串分组；小组件签名只有同一钥匙串分组。未卸载、未清数据。未部署、未调用模型。
+- 侧载包 `artifacts/sideload-20261103-171141/WriteRight-0.2.0-5-sideload.ipa`（5,823,632 字节，SHA-256 `0899c905bed41a4e4d995635f9c1ff2c3dc559f43268eb9c594e2399b3ef316d`）。解压后主应用与小组件都能读到该 App Group，无 `embedded.mobileprovision`，`NSSupportsLiveActivities` 为 true，扩展点为 WidgetKit。公开云配置检查通过。接收方需自行重签；iLoader 2.4.1 仍不能单独登记扩展。这份包不含本机开发钥匙串分组。
