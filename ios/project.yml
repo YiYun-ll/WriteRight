@@ -31,7 +31,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.yiyun.essaypilot.dev
         "CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]": Config/Simulator.entitlements
-        "CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]": Config/Shared.entitlements
+        "CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]": Config/Device.entitlements
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_FILE: Config/AppInfo.plist
         INFOPLIST_KEY_CFBundleDisplayName: WriteRight
@@ -54,7 +54,8 @@ targets:
         PRODUCT_NAME: WriteRightWidgets
         MARKETING_VERSION: "0.2.0"
         CURRENT_PROJECT_VERSION: "1"
-        CODE_SIGN_ENTITLEMENTS: Config/Widget.entitlements
+        "CODE_SIGN_ENTITLEMENTS[sdk=iphonesimulator*]": Config/Widget.entitlements
+        "CODE_SIGN_ENTITLEMENTS[sdk=iphoneos*]": Config/WidgetDevice.entitlements
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_FILE: Config/WidgetInfo.plist
         SKIP_INSTALL: YES

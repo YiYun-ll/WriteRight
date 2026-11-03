@@ -1,4 +1,5 @@
 import SwiftUI
+import PhotosUI
 import UniformTypeIdentifiers
 
 struct SettingsView: View {
@@ -32,12 +33,12 @@ struct SettingsView: View {
                         row("迁入本机草稿", symbol: "tray.and.arrow.down", detail: "\(model.guestDraftCount)篇本机练习还在等你收好")
                     }.buttonStyle(.plain).accessibilityIdentifier("migrate-guest-drafts")
                 }
-                section("慢慢积累") {
-                    NavigationLink { PracticeStatsView() } label: { row("成绩曲线", symbol: "chart.xyaxis.line", detail: "看见每一次练习的刻度") }
+                section("学习记录") {
+                    NavigationLink { PracticeStatsView() } label: { row("成绩曲线", symbol: "chart.xyaxis.line") }
                     Divider()
-                    NavigationLink { TaskCompareView() } label: { row("同题对比", symbol: "square.split.2x1", detail: "把两次表达放在一起看") }
+                    NavigationLink { TaskCompareView() } label: { row("同题对比", symbol: "square.split.2x1") }
                 }
-                section("数据与安心") {
+                section("数据管理") {
                     Button { Task { await model.refreshNickname(); await model.syncNow() } } label: {
                         row("立即同步", symbol: "arrow.triangle.2.circlepath", detail: model.syncStatusDetail, chevron: false)
                     }.disabled(model.syncState == "正在同步").accessibilityIdentifier("sync-now")
@@ -55,7 +56,7 @@ struct SettingsView: View {
                     Divider()
                     NavigationLink { PrivacyView() } label: { row("隐私与原稿", symbol: "hand.raised") }
                 }
-                section("使用与偏好") {
+                section("通用") {
                     HStack(spacing: 14) {
                         Image(systemName: "circle.lefthalf.filled").font(.system(size: 20)).frame(width: 25).foregroundStyle(WriteRightTheme.accent)
                         Picker("外观", selection: $appearance) {
@@ -63,15 +64,15 @@ struct SettingsView: View {
                         }.pickerStyle(.menu)
                     }.frame(minHeight: 56)
                     Divider()
+                    NavigationLink { WidgetSettingsView() } label: { row("桌面小组件", symbol: "square.grid.2x2") }.accessibilityIdentifier("profile-widgets")
+                    Divider()
                     NavigationLink { WritingHelpView() } label: { row("使用帮助", symbol: "questionmark.circle") }.accessibilityIdentifier("profile-help")
                     Divider()
                     NavigationLink { AboutWriteRightView() } label: { row("关于 WriteRight", symbol: "leaf") }.accessibilityIdentifier("profile-about")
                 }
-                Text("写过的每一页，都算数。")
-                    .font(.system(.subheadline, design: .serif)).foregroundStyle(WriteRightTheme.secondary)
-                    .frame(maxWidth: .infinity).padding(.vertical, 12)
+
             }.padding(24).frame(maxWidth: 720).frame(maxWidth: .infinity)
-        }.background(WriteRightTheme.background).foregroundStyle(WriteRightTheme.ink).navigationTitle("我的")
+        }.background(WriteRightTheme.background).foregroundStyle(WriteRightTheme.ink).navigationTitle("我的").navigationBarTitleDisplayMode(.inline)
             .toolbarBackground(WriteRightTheme.background, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .refreshable { await model.refreshNickname(); if model.account != nil { await model.syncNow() } }
@@ -90,37 +91,33 @@ struct SettingsView: View {
                 Button("好") { importResult = nil }
             } message: { Text(importResult ?? "") }
     }
-    @ViewBuilder private var accountHeader: some View {
-        if let account = model.account {
-            HStack(spacing: 18) {
-                Image("BrandMark").resizable().scaledToFit().frame(width: 58, height: 58).clipShape(RoundedRectangle(cornerRadius: 17)).accessibilityHidden(true)
-                VStack(alignment: .leading, spacing: 8) {
+    private var accountHeader: some View {
+        HStack(alignment: .center, spacing: 16) {
+            NavigationLink { ProfileAvatarView() } label: {
+                ProfileAvatar(data: model.avatarData, size: 68)
+            }.buttonStyle(.plain).accessibilityLabel("更换头像").accessibilityIdentifier("profile-avatar")
+            VStack(alignment: .leading, spacing: 4) {
+                if let account = model.account {
                     Button { editingNickname = true } label: {
-                        HStack(alignment: .firstTextBaseline, spacing: 10) {
-                            Text(model.nickname ?? "你的写作书桌").font(.system(.title3, design: .serif)).lineLimit(2).accessibilityIdentifier("profile-nickname")
-                            Image(systemName: "pencil").font(.system(size: 14)).foregroundStyle(WriteRightTheme.accent)
+                        HStack(spacing: 8) {
+                            Text(model.nickname ?? "WriteRight 用户").font(.title3.weight(.semibold)).lineLimit(2).accessibilityIdentifier("profile-nickname")
+                            Image(systemName: "pencil").font(.caption)
                         }.frame(minHeight: 44)
                     }.buttonStyle(.plain).accessibilityLabel("修改昵称，\(model.nickname ?? "尚未设置")").accessibilityIdentifier("profile-edit-nickname")
                     NavigationLink { AccountView() } label: {
-                        HStack { Text(maskedEmail(account.email)); Image(systemName: "chevron.right").font(.system(size: 12)) }.font(.subheadline).foregroundStyle(WriteRightTheme.secondary).frame(minHeight: 44)
+                        HStack { Text(maskedEmail(account.email)); Image(systemName: "chevron.right").font(.caption) }
+                            .font(.subheadline).foregroundStyle(WriteRightTheme.secondary).frame(minHeight: 44)
                     }.buttonStyle(.plain).accessibilityIdentifier("account-link")
-                }.frame(maxWidth: .infinity, alignment: .leading)
-            }.padding(.vertical, 8)
-        } else {
-            NavigationLink { LoginView() } label: {
-                header(title: "欢迎来坐坐", subtitle: "登录，收好你的练习与回信")
-            }.buttonStyle(.plain).accessibilityIdentifier("login-link")
-        }
-    }
-    private func header(title: String, subtitle: String) -> some View {
-        HStack(spacing: 18) {
-            Image("BrandMark").resizable().scaledToFit().frame(width: 58, height: 58).clipShape(RoundedRectangle(cornerRadius: 17)).accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 9) {
-                Text(title).font(.system(.title3, design: .serif))
-                Text(subtitle).font(.subheadline).foregroundStyle(WriteRightTheme.secondary).lineLimit(2)
+                } else {
+                    NavigationLink { LoginView() } label: {
+                        VStack(alignment: .leading, spacing: 8) {
+                            HStack { Text("登录 / 注册").font(.title3.weight(.semibold)); Image(systemName: "chevron.right").font(.caption) }
+                            Text("登录后同步学习记录").font(.subheadline).foregroundStyle(WriteRightTheme.secondary)
+                        }.frame(minHeight: 64)
+                    }.buttonStyle(.plain).accessibilityIdentifier("login-link")
+                }
             }.frame(maxWidth: .infinity, alignment: .leading)
-            Image(systemName: "chevron.right").font(.system(size: 12)).foregroundStyle(WriteRightTheme.secondary)
-        }.padding(.vertical, 14)
+        }.padding(18).background(WriteRightTheme.surface, in: RoundedRectangle(cornerRadius: 20))
     }
     private func maskedEmail(_ email: String) -> String {
         let parts = email.split(separator: "@", maxSplits: 1)
@@ -145,7 +142,7 @@ struct SettingsView: View {
     }
     private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(title).font(.system(.headline, design: .serif)).foregroundStyle(WriteRightTheme.secondary)
+            Text(title).font(.subheadline.weight(.semibold)).foregroundStyle(WriteRightTheme.secondary)
             VStack(spacing: 0, content: content).padding(.horizontal, 18).padding(.vertical, 4)
                 .background(WriteRightTheme.surface, in: RoundedRectangle(cornerRadius: 18)).buttonStyle(.plain)
         }
