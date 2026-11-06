@@ -38,3 +38,4 @@ supabase/.env.local
 # Local test data and artifacts
 tests/private/
 artifacts/
+翻译批改指令.pdf
