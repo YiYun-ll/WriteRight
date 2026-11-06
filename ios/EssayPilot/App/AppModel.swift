@@ -52,10 +52,11 @@ import WidgetKit
         }
         let snapshot = widgetRecordsEnabled ? WidgetSnapshot(enabled: true, tasks: records(.task), links: records(.link)) : WidgetSnapshot()
         let changed = WidgetSnapshotStore.write(snapshot)
-        if changed || WidgetSnapshotStore.replicateBackground() { WidgetCenter.shared.reloadAllTimelines() }
+        let replicated = WidgetSnapshotStore.replicateBackground()
+        if changed || replicated { WidgetCenter.shared.reloadAllTimelines() }
     }
     func saveWidgetBackground(_ data: Data) async throws {
-        let normalized = try await Task.detached { try ProfileImageStore.normalized(data, size: 1000) }.value
+        let normalized = try await Task.detached { try WidgetPhoto.normalized(data) }.value
         try WidgetSnapshotStore.writeBackground(normalized)
         WidgetCenter.shared.reloadAllTimelines()
     }
@@ -437,7 +438,7 @@ import WidgetKit
         let ownerID = account?.userID
         do {
             let response: GradingStatusResponse
-            if let pages = submission.essayPages, !pages.isEmpty {
+            if let pages = submission.essayPages {
                 let store = try scanImageStore()
                 func bytes(_ pages: [ScanPageDocument]) throws -> [Data] {
                     try pages.map { page in
@@ -445,7 +446,7 @@ import WidgetKit
                         return try Data(contentsOf: url)
                     }
                 }
-                response = try await gradingService.submitPhotos(taskID: submission.task.id, part: submission.task.part, submissionID: submission.id, idemKey: job.idemKey, taskImages: bytes(submission.task.sourcePages ?? []), essayImages: bytes(pages))
+                response = try await gradingService.submitPhotos(taskID: submission.task.id, part: submission.task.part, submissionID: submission.id, idemKey: job.idemKey, taskImages: bytes(submission.task.sourcePages ?? []), essayImages: bytes(pages), referenceTranslation: submission.task.referenceTranslation, textInputs: submission.textInputs)
             } else {
                 response = try await gradingService.submit(task: submission.task, submissionID: submission.id, originalText: submission.originalText, idemKey: job.idemKey)
             }
@@ -481,10 +482,10 @@ import WidgetKit
             guard report.part == source.task.part, report.report.score.max == source.task.part.maximumScore,
                   report.sentences.allSatisfy({ $0.startUTF16 >= 0 && $0.lengthUTF16 >= 0 && $0.startUTF16 + $0.lengthUTF16 <= original.length && original.substring(with: NSRange(location: $0.startUTF16, length: $0.lengthUTF16)) == $0.original }) else { throw GradingServiceError.invalidResponse }
             if let photo = report.report.photoReview {
-                let identity = [source.task.part.rawValue] + photo.sources.map { "\($0.role):\($0.page):\($0.checksum)" }
+                let hash = PracticeFingerprint.hash(part: source.task.part, reference: source.task.referenceTranslation, text: source.textInputs, sources: photo.sources.map { "\($0.role):\($0.page):\($0.checksum)" })
                 guard source.originalText.isEmpty, report.sentences.isEmpty,
                       report.report.corrections.isEmpty,
-                      ContentFingerprint.hash(identity.joined(separator: "\n")) == source.contentHash else { throw GradingServiceError.invalidResponse }
+                      photo.textSources == source.textInputs, hash == source.contentHash else { throw GradingServiceError.invalidResponse }
             }
             try repository.saveGradingReport(report)
         }
@@ -541,9 +542,11 @@ import WidgetKit
     }
 
     func submitPhotoGrading(_ draft: DraftDocument) async -> GradingJobDocument? {
-        guard let gradingService, let repository, canGrade, let originals = draft.pages, !originals.isEmpty else { return nil }
+        guard let gradingService, let repository, canGrade else { return nil }
+        let originals = draft.pages ?? []
+        guard !originals.isEmpty || (!(draft.task.sourcePages ?? []).isEmpty && !draft.body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty) else { return nil }
         let owner = account?.userID
-        if let previous = submissions.last(where: { $0.draftID == draft.id && $0.essayPages?.map(\.id) == originals.map(\.id) && $0.task.sourcePages?.map(\.id) == draft.task.sourcePages?.map(\.id) && $0.task.part == draft.task.part }), let job = gradingJobs.first(where: { $0.submissionID == previous.id }) {
+        if let previous = submissions.last(where: { draft.matches($0) }), let job = gradingJobs.first(where: { $0.submissionID == previous.id }) {
             if job.status == .failed { await retryGrading(job) }
             return gradingJobs.first { $0.id == job.id }
         }
@@ -578,15 +581,24 @@ import WidgetKit
             var saved = draft; saved.task.sourcePages = topic.0; saved.pages = essay.0
             let taskHashes = topic.1.map(ContentFingerprint.hash)
             let essayHashes = essay.1.map(ContentFingerprint.hash)
-            saved.task.photoFingerprint = taskHashes.isEmpty ? nil : ContentFingerprint.hash(([draft.task.part.rawValue] + taskHashes).joined(separator: "\n"))
-            let identity = [draft.task.part.rawValue] + taskHashes.enumerated().map { "task:\($0.offset + 1):\($0.element)" } + essayHashes.enumerated().map { "essay:\($0.offset + 1):\($0.element)" }
-            let submission = SubmissionDocument(id: UUID(), draftID: saved.id, task: saved.task, originalText: "", wordCount: 0, contentHash: ContentFingerprint.hash(identity.joined(separator: "\n")), sentences: [], submittedAt: .now, essayPages: essay.0)
+            saved.task.photoFingerprint = taskHashes.isEmpty ? (draft.task.prompt.isEmpty ? nil : ContentFingerprint.hash([draft.task.part.rawValue, "task-text:\(draft.task.prompt)"].joined(separator: "\n"))) : ContentFingerprint.hash(([draft.task.part.rawValue] + taskHashes).joined(separator: "\n"))
+            let text = saved.mixedTextInputs
+            let sources = taskHashes.enumerated().map { "task:\($0.offset + 1):\($0.element)" } + essayHashes.enumerated().map { "essay:\($0.offset + 1):\($0.element)" }
+            let hash = PracticeFingerprint.hash(part: saved.task.part, reference: saved.task.referenceTranslation, text: text, sources: sources)
+            let submission = SubmissionDocument(id: UUID(), draftID: saved.id, task: saved.task, originalText: "", wordCount: text?.essay.isEmpty == false ? WordCounter.count(text!.essay) : 0, contentHash: hash, sentences: [], submittedAt: .now, essayPages: essay.0, textInputs: text)
             let key = UUID()
             let job = GradingJobDocument(id: key, submissionID: submission.id, idemKey: key, status: .queued, stage: .evaluate, errorCode: nil, updatedAt: .now)
-            try repository.save(saved); draftStored = true
+            if var editable = drafts.first(where: { $0.id == saved.id }) {
+                let taskUploads = Dictionary(uniqueKeysWithValues: topic.0.map { ($0.id, $0) })
+                let essayUploads = Dictionary(uniqueKeysWithValues: essay.0.map { ($0.id, $0) })
+                editable.task.sourcePages = (editable.task.sourcePages ?? []).map { taskUploads[$0.id] ?? $0 }
+                editable.pages = (editable.pages ?? []).map { essayUploads[$0.id] ?? $0 }
+                try repository.save(editable)
+            } else { try repository.save(saved) }
+            draftStored = true
             try repository.saveSubmission(submission); try repository.saveGradingJob(job)
             durableJob = job; try reload(); photoUploadPhase = "uploading"
-            let response = try await gradingService.submitPhotos(taskID: saved.task.id, part: saved.task.part, submissionID: submission.id, idemKey: key, taskImages: topic.1, essayImages: essay.1)
+            let response = try await gradingService.submitPhotos(taskID: saved.task.id, part: saved.task.part, submissionID: submission.id, idemKey: key, taskImages: topic.1, essayImages: essay.1, referenceTranslation: saved.task.referenceTranslation, textInputs: saved.mixedTextInputs)
             guard account?.userID == owner, response.jobId == key else { throw AuthServiceError.invalidSession }
             try apply(response, submissionID: submission.id); startPolling(key)
             return gradingJobs.first { $0.id == key }
@@ -846,6 +858,7 @@ import WidgetKit
 @MainActor final class EssayEditorModel: ObservableObject {
     @Published var title: String
     @Published var prompt: String
+    @Published var referenceTranslation: String
     @Published var requirements: String
     @Published var body: String
     @Published private(set) var taskConfirmed: Bool
@@ -857,11 +870,14 @@ import WidgetKit
 
     init(document: DraftDocument, repository: any WritingRepository, didSave: @escaping () -> Void) {
         self.document = document; self.repository = repository; self.didSave = didSave
+        referenceTranslation = document.task.referenceTranslation ?? ""
         title = document.task.title; prompt = document.task.prompt
         requirements = document.task.requirements.map(\.text).joined(separator: "\n")
         body = document.body; taskConfirmed = document.task.isConfirmed
         Publishers.CombineLatest4($title, $prompt, $requirements, $body)
             .dropFirst().debounce(for: .milliseconds(450), scheduler: RunLoop.main)
+            .sink { [weak self] _ in self?.save() }.store(in: &subscriptions)
+        $referenceTranslation.dropFirst().debounce(for: .milliseconds(450), scheduler: RunLoop.main)
             .sink { [weak self] _ in self?.save() }.store(in: &subscriptions)
     }
 
@@ -871,10 +887,11 @@ import WidgetKit
 
     @discardableResult func save() -> Bool {
         let points = requirements.split(whereSeparator: \.isNewline).map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
-        let taskChanged = document.task.title != title || document.task.prompt != prompt || document.task.requirements.map(\.text) != points
+        let taskChanged = document.task.title != title || document.task.prompt != prompt || document.task.requirements.map(\.text) != points || (document.task.referenceTranslation ?? "") != referenceTranslation
         if taskChanged {
             document.task.revision += 1; document.task.confirmedAt = nil; taskConfirmed = false
         }
+        document.task.referenceTranslation = referenceTranslation.isEmpty ? nil : referenceTranslation
         document.task.title = title; document.task.prompt = prompt
         document.task.requirements = points.enumerated().map { .init(id: "p\($0.offset + 1)", text: $0.element) }
         document.body = body; document.updatedAt = .now

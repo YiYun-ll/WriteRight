@@ -99,7 +99,7 @@ enum PracticeAnalytics {
     }
 
     static func errorsPerHundredWords(_ point: ScorePoint) -> Double? {
-        guard point.wordCount > 0 && !point.estimatedSource else { return nil }
+        guard point.part != .translation && point.wordCount > 0 && !point.estimatedSource else { return nil }
         return Double(point.requiredErrors) / Double(point.wordCount) * 100
     }
 

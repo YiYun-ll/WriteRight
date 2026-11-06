@@ -21,6 +21,7 @@ struct DeskEntry: TimelineEntry {
     var date: Date
     var configuration: DeskWidgetIntent
     var snapshot: WidgetSnapshot
+    var backgroundImage: UIImage? = nil
 }
 
 struct DeskProvider: AppIntentTimelineProvider {
@@ -31,7 +32,7 @@ struct DeskProvider: AppIntentTimelineProvider {
         return Timeline(entries: [entry(configuration)], policy: .after(tomorrow))
     }
     private func entry(_ configuration: DeskWidgetIntent) -> DeskEntry {
-        DeskEntry(date: .now, configuration: configuration, snapshot: WidgetSnapshotStore.read())
+        DeskEntry(date: .now, configuration: configuration, snapshot: WidgetSnapshotStore.read(), backgroundImage: WidgetSnapshotStore.readBackgroundImage())
     }
 }
 
@@ -39,9 +40,12 @@ struct ExamCountdownWidget: Widget {
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: "WriteRightExamCountdown", intent: DeskWidgetIntent.self, provider: DeskProvider()) { entry in
             DeskWidgetView(entry: entry).containerBackground(for: .widget) {
-                if let image = DeskWidgetView.backgroundImage {
+                if let image = entry.backgroundImage {
                     ZStack {
-                        Image(uiImage: image).resizable().scaledToFill()
+                        GeometryReader { bounds in
+                            Image(uiImage: image).resizable().scaledToFill()
+                                .frame(width: bounds.size.width, height: bounds.size.height).clipped()
+                        }
                         Color.black.opacity(0.62)
                     }
                 } else { entry.configuration.theme.background }
@@ -56,14 +60,13 @@ struct ExamCountdownWidget: Widget {
 struct DeskWidgetView: View {
     let entry: DeskEntry
     @Environment(\.widgetFamily) private var family
-    static var backgroundImage: UIImage? {
-        guard let data = WidgetSnapshotStore.readBackground() else { return nil }
-        return UIImage(data: data)
-    }
     private var display: WidgetDisplay {
-        WidgetDisplay.resolve(theme: entry.configuration.theme, content: entry.configuration.content, snapshot: entry.snapshot, photo: WidgetSnapshotStore.readBackground())
+        WidgetDisplay.resolve(theme: entry.configuration.theme, content: entry.configuration.content, snapshot: entry.snapshot, photo: entry.backgroundImage == nil ? nil : Data([1]))
     }
-    private var theme: WidgetTheme { display.usesPhoto && Self.backgroundImage != nil ? .photo : entry.configuration.theme }
+    private var theme: WidgetTheme {
+        if entry.backgroundImage != nil { return .photo }
+        return entry.configuration.theme == .photo ? .paper : entry.configuration.theme
+    }
     private var countdown: Bool { display.records == nil }
     private var showsLinks: Bool {
         entry.configuration.content == .links || (entry.configuration.content == .countdown && entry.snapshot.tasks.isEmpty && !entry.snapshot.links.isEmpty)

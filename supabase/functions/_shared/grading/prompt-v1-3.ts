@@ -35,6 +35,7 @@ export function buildV13Prompt(
   context: GradingContext,
   repairCodes: string[] = [],
 ): CompletionRequest {
+  if (context.part === "T") throw new Error("INVALID_WRITING_PART");
   if (context.promptVersion === "WRITERIGHT_GRADING_V1_2") {
     return buildLegacyPrompt(context, repairCodes);
   }

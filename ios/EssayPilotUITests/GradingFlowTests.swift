@@ -19,15 +19,18 @@ final class GradingFlowTests: XCTestCase {
         app.buttons["auth-verify"].tap()
 
         app.tabBars.buttons["练习"].tap()
-        XCTAssertTrue(app.buttons["new-part-A"].waitForExistence(timeout: 5))
-        app.buttons["new-part-A"].tap()
+        XCTAssertTrue(app.buttons["practice-part-A"].waitForExistence(timeout: 5))
+        app.buttons["practice-part-A"].tap()
+        app.buttons["start-A"].tap()
         app.textFields["task-title"].tap(); app.textFields["task-title"].typeText("Book club")
         app.textFields["task-prompt"].tap(); app.textFields["task-prompt"].typeText("Explain why books are useful.")
         app.buttons["收起键盘"].tap()
-        app.buttons["confirm-task"].tap()
         let body = app.textViews["essay-body"]
+        for _ in 0..<5 where !body.isHittable { app.swipeUp() }
         body.tap(); body.typeText("I has a book. It is useful.")
-        app.buttons["submit-grading"].tap()
+        app.buttons["收起键盘"].tap(); app.buttons["photo-submit"].tap()
+        XCTAssertTrue(app.buttons["photo-open-report"].waitForExistence(timeout: 15))
+        app.buttons["先去做别的"].tap()
 
         let recent = app.buttons["recent-report"]
         XCTAssertTrue(recent.waitForExistence(timeout: 10))

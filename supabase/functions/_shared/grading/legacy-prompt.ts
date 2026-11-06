@@ -33,6 +33,7 @@ export function buildLegacyPrompt(
   context: GradingContext,
   repairCodes: string[] = [],
 ): CompletionRequest {
+  if (context.part === "T") throw new Error("INVALID_WRITING_PART");
   return {
     system: shared + rubrics[context.part] + "\nJSON Schema:\n" + JSON.stringify(schema) +
       (repairCodes.length

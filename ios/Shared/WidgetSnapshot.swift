@@ -2,6 +2,7 @@ import AppIntents
 import Foundation
 import Security
 import SwiftUI
+import UIKit
 
 enum WidgetTheme: String, AppEnum {
     case paper, sage, midnight, photo
@@ -47,7 +48,7 @@ struct WidgetDisplay {
     }
 }
 
-struct WidgetRecord: Codable, Identifiable {
+struct WidgetRecord: Codable, Identifiable, Equatable {
     var id: UUID
     var title: String
     var detail: String
@@ -57,6 +58,7 @@ struct WidgetSnapshot: Codable {
     var enabled = false
     var tasks: [WidgetRecord] = []
     var links: [WidgetRecord] = []
+    var updatedAt: Date? = nil
 }
 
 protocol WidgetSecondaryStore {
@@ -73,44 +75,80 @@ enum WidgetSnapshotStore {
     private static let backgroundAccount = "background"
     private static var groupDefaults: UserDefaults? { UserDefaults(suiteName: group) }
     static var backgroundURL: URL? {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group)?.appendingPathComponent("widget-background-v2.json")
+    }
+    private struct Background: Codable {
+        var data: Data?
+        var updatedAt: Date
+    }
+    private static var legacyBackgroundURL: URL? {
         FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: group)?.appendingPathComponent("widget-background.jpg")
     }
     static func read() -> WidgetSnapshot {
-        if let data = groupDefaults?.data(forKey: snapshotKey), let snapshot = decode(data) { return snapshot }
-        if let data = secondary.load(account: snapshotAccount), let snapshot = decode(data) { return snapshot }
-        return WidgetSnapshot()
+        let candidates = [groupDefaults?.data(forKey: snapshotKey), secondary.load(account: snapshotAccount)]
+            .compactMap { $0.flatMap(decode) }
+        return candidates.sorted {
+            if $0.updatedAt != $1.updatedAt { return ($0.updatedAt ?? .distantPast) > ($1.updatedAt ?? .distantPast) }
+            return !$0.enabled && $1.enabled
+        }.first ?? WidgetSnapshot()
     }
-    static func readBackground() -> Data? {
-        if let url = backgroundURL, let data = try? Data(contentsOf: url), !data.isEmpty { return data }
-        return secondary.load(account: backgroundAccount)
+    private static func background() -> Background? {
+        let candidates = [backgroundURL.flatMap { try? Data(contentsOf: $0) }, secondary.load(account: backgroundAccount), legacyBackgroundURL.flatMap { try? Data(contentsOf: $0) }]
+        return candidates.compactMap { data -> Background? in
+            guard let data else { return nil }
+            if let record = try? JSONDecoder().decode(Background.self, from: data) {
+                if let photo = record.data, WidgetPhoto.image(photo) == nil { return nil }
+                return record
+            }
+            return WidgetPhoto.image(data) == nil ? nil : Background(data: data, updatedAt: .distantPast)
+        }.max { $0.updatedAt < $1.updatedAt }
     }
+    static func readBackground() -> Data? { background()?.data }
+    static func readBackgroundImage() -> UIImage? { background()?.data.flatMap(WidgetPhoto.image) }
     @discardableResult static func write(_ snapshot: WidgetSnapshot) -> Bool {
+        var snapshot = snapshot
+        let current = read()
+        snapshot.updatedAt = current.enabled == snapshot.enabled && current.tasks == snapshot.tasks && current.links == snapshot.links ? current.updatedAt : .now
         guard let data = encode(snapshot) else { return false }
         let groupChanged = groupDefaults?.data(forKey: snapshotKey) != data
         if groupChanged { groupDefaults?.set(data, forKey: snapshotKey) }
         let secondaryChanged = secondary.load(account: snapshotAccount) != data && secondary.save(data, account: snapshotAccount)
         return groupChanged || secondaryChanged
     }
-    static func writeBackground(_ data: Data) throws {
+    private static func storeBackground(_ record: Background) throws {
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        let data = try encoder.encode(record)
         var stored = false
         if let url = backgroundURL {
-            try data.write(to: url, options: .atomic)
-            stored = true
+            do {
+                try data.write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+                stored = true
+            } catch { /* Re-signing can leave only one shared storage route available. */ }
         }
         if secondary.save(data, account: backgroundAccount) { stored = true }
-        if !stored { throw CocoaError(.fileWriteUnknown) }
+        if !stored { throw WidgetStorageError.sharedAccessUnavailable }
+    }
+    static func writeBackground(_ data: Data) throws {
+        try storeBackground(.init(data: WidgetPhoto.normalized(data), updatedAt: .now))
     }
     static func removeBackground() throws {
-        if let url = backgroundURL, FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
-        secondary.delete(account: backgroundAccount)
+        // A small dated tombstone prevents an inaccessible stale copy from restoring a photo.
+        try storeBackground(.init(data: nil, updatedAt: .now))
+        if let url = legacyBackgroundURL { try? FileManager.default.removeItem(at: url) }
     }
     @discardableResult static func replicateBackground() -> Bool {
-        guard let data = backgroundURL.flatMap({ try? Data(contentsOf: $0) }), !data.isEmpty else { return false }
+        guard var record = background() else { return false }
+        if record.updatedAt == .distantPast, let photo = record.data {
+            guard let normalized = try? WidgetPhoto.normalized(photo) else { return false }
+            record.data = normalized; record.updatedAt = .now
+        }
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        guard let data = try? encoder.encode(record) else { return false }
         return secondary.load(account: backgroundAccount) != data && secondary.save(data, account: backgroundAccount)
     }
     static func eraseGroupCopies() {
         groupDefaults?.removeObject(forKey: snapshotKey)
-        if let url = backgroundURL, FileManager.default.fileExists(atPath: url.path) { try? FileManager.default.removeItem(at: url) }
+        for url in [backgroundURL, legacyBackgroundURL].compactMap({ $0 }) { try? FileManager.default.removeItem(at: url) }
     }
     static func resetSharedCopies() {
         eraseGroupCopies()
@@ -127,8 +165,7 @@ enum WidgetSnapshotStore {
 struct WidgetKeychain: WidgetSecondaryStore {
     private static let service = "com.yiyun.essaypilot.widget"
     func save(_ data: Data, account: String) -> Bool {
-        if Self.store(data, account: account, group: Self.accessGroup()) { return true }
-        return Self.accessGroup() == nil ? false : Self.store(data, account: account, group: nil)
+        Self.store(data, account: account, group: Self.accessGroup())
     }
     func load(account: String) -> Data? {
         if let group = Self.accessGroup(), let data = Self.copy(account: account, group: group) { return data }
@@ -140,7 +177,9 @@ struct WidgetKeychain: WidgetSecondaryStore {
     }
     private static func store(_ data: Data, account: String, group: String?) -> Bool {
         let query = base(account: account, group: group)
-        SecItemDelete(query as CFDictionary)
+        let updated = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+        if updated == errSecSuccess { return true }
+        guard updated == errSecItemNotFound else { return false }
         var add = query
         add[kSecValueData as String] = data
         add[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock

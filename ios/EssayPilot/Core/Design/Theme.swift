@@ -98,7 +98,7 @@ struct DraftRow: View {
                 Text("冲突副本").font(.caption).foregroundStyle(WriteRightTheme.secondary)
             }
             HStack {
-                Text(draft.source == "photos" ? "\(draft.task.part.title) · \(draft.pages?.count ?? 0) 页原稿" : "\(draft.task.part.title) · \(draft.wordCount) 词")
+                Text(draft.practiceSummary)
                 Spacer()
                 Text(draft.updatedAt, format: .dateTime.month().day())
             }.font(.caption).foregroundStyle(WriteRightTheme.secondary)

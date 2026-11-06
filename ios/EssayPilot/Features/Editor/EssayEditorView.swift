@@ -25,31 +25,31 @@ struct EssayEditorView: View {
                     topicSection
                     VStack(alignment: .leading, spacing: 14) {
                         HStack(alignment: .firstTextBaseline) {
-                            Text("正文").font(.title3.weight(.semibold))
+                            Text(model.part == .translation ? "我的译文" : "正文").font(.title3.weight(.semibold))
                             Spacer()
                             if ["ocr", "ai_photo"].contains(model.document.source) {
                                 Text(model.document.source == "ai_photo" ? "AI 读图核对稿" : "历史转录").font(.caption).foregroundStyle(WriteRightTheme.secondary)
                             }
-                            Text("参考词数 \(model.wordCount)")
+                            Text(model.part == .translation ? "\(model.body.filter { !$0.isWhitespace }.count) 字" : "参考词数 \(model.wordCount)")
                                 .font(.caption.monospacedDigit()).foregroundStyle(WriteRightTheme.secondary)
                                 .accessibilityHint("缩略词、连字符词和数字分别计为一个词，仅供参考")
                                 .accessibilityIdentifier("word-count")
                         }
                         if model.body.isEmpty {
-                            Button("导入作文照片", systemImage: "photo") { openPhotos() }
+                            Button(model.part == .translation ? "导入翻译照片" : "导入作文照片", systemImage: "photo") { openPhotos() }
                                 .font(.subheadline).frame(minHeight: 44)
                                 .accessibilityIdentifier("import-essay-photo")
                         }
                         ZStack(alignment: .topLeading) {
                             if model.body.isEmpty {
-                                Text("写下你的作文…").foregroundStyle(WriteRightTheme.secondary)
+                                Text(model.part == .translation ? "写下你的中文译文…" : "写下你的作文…").foregroundStyle(WriteRightTheme.secondary)
                                     .padding(.top, 8).padding(.leading, 5).allowsHitTesting(false)
                             }
                             TextEditor(text: $model.body)
                                 .autocorrectionDisabled()
                                 .font(.system(.body, design: .serif)).lineSpacing(7)
                                 .scrollContentBackground(.hidden).focused($focusedField, equals: .body)
-                                .frame(minHeight: 350).accessibilityLabel("作文正文")
+                                .frame(minHeight: 350).accessibilityLabel(model.part == .translation ? "我的译文" : "作文正文")
                                 .accessibilityIdentifier("essay-body")
                         }.padding(16).background(WriteRightTheme.surface, in: RoundedRectangle(cornerRadius: 22))
                     }
@@ -99,6 +99,11 @@ struct EssayEditorView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                     if appModel.canGrade {
+                        if model.part == .translation {
+                            Text("提交后，英文原文、译文及参考译文会发送给 DeepSeek 用于批改。")
+                                .font(.footnote).foregroundStyle(WriteRightTheme.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                         Button {
                             guard model.save() else { return }
                             isSubmitting = true; submitError = nil
@@ -146,17 +151,24 @@ struct EssayEditorView: View {
                 TextField("题目名称（选填）", text: $model.title)
                     .font(.headline).focused($focusedField, equals: .title).accessibilityIdentifier("task-title")
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("题面").font(.subheadline.weight(.medium))
-                    TextField("粘贴或输入完整题目", text: $model.prompt, axis: .vertical)
+                    Text(model.part == .translation ? "英文原文" : "题面").font(.subheadline.weight(.medium))
+                    TextField(model.part == .translation ? "粘贴完整英文原文" : "粘贴或输入完整题目", text: $model.prompt, axis: .vertical)
                         .lineLimit(4...12).textInputAutocapitalization(.sentences)
                         .focused($focusedField, equals: .prompt)
                         .accessibilityIdentifier("task-prompt")
                 }
                 Divider()
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("要点").font(.subheadline.weight(.medium))
-                    TextField("每行一条，可选填", text: $model.requirements, axis: .vertical)
+                    Text(model.part == .translation ? "练习要求（选填）" : "要点").font(.subheadline.weight(.medium))
+                    TextField(model.part == .translation ? "如：5句专项，每句3分；默认整篇15分" : "每行一条，可选填", text: $model.requirements, axis: .vertical)
                         .lineLimit(2...8).focused($focusedField, equals: .requirements).accessibilityIdentifier("task-requirements")
+                }
+                if model.part == .translation {
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("参考译文（选填）").font(.subheadline.weight(.medium))
+                        TextField("有则提供，仅供对照", text: $model.referenceTranslation, axis: .vertical)
+                            .lineLimit(3...10).accessibilityIdentifier("translation-reference")
+                    }
                 }
                 Button {
                     focusedField = nil; model.confirmTask()
@@ -171,7 +183,7 @@ struct EssayEditorView: View {
         } label: {
             HStack(spacing: 12) {
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("题目").font(.headline)
+                    Text(model.part == .translation ? "英文原文" : "题目").font(.headline)
                     if !topicExpanded {
                         Text(model.document.task.displayTitle).font(.subheadline)
                             .foregroundStyle(WriteRightTheme.secondary).lineLimit(2)

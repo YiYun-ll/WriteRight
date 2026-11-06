@@ -104,7 +104,7 @@ struct PracticeStatsView: View {
                     Text("\(point.score.formatted()) / \(point.max)").font(.subheadline.monospacedDigit())
                 }
             }
-            Text("AI 模拟估分，题目难度会影响结果；小作文与大作文分别记录。").font(.footnote).foregroundStyle(WriteRightTheme.secondary)
+            Text("AI 模拟估分，题目难度会影响结果；小作文、大作文与翻译分别记录。").font(.footnote).foregroundStyle(WriteRightTheme.secondary)
         }.padding(22).background(WriteRightTheme.surface, in: RoundedRectangle(cornerRadius: 20))
     }
 }
@@ -148,7 +148,7 @@ struct TaskCompareView: View {
         return VStack(alignment: .leading, spacing: 12) {
             HStack { Text(title).font(.headline); Spacer(); Text(submission.submittedAt, format: .dateTime.month().day().locale(Locale(identifier: "zh_CN"))).font(.caption).foregroundStyle(WriteRightTheme.secondary) }
             if let photo = result?.report.photoReview {
-                ForEach(photo.sources.filter { $0.role == "essay" }) { ReportPhotoView(source: $0) }
+                ForEach(photo.sources.filter { $0.role == "essay" }) { ReportPhotoView(source: $0, translation: submission.task.part == .translation) }
             } else { Text(submission.originalText).font(.system(.subheadline, design: .serif)).lineSpacing(5).lineLimit(8) }
             if let result {
                 Text(result.report.overallComment).font(.subheadline).foregroundStyle(WriteRightTheme.secondary)

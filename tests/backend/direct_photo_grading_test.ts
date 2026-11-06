@@ -259,3 +259,35 @@ Deno.test("accepted V4 photo snapshots keep the frozen feedback contract", async
   assertEquals(result.report.schema_version, "2.2.0");
   assertEquals(result.report.sentence_reviews, undefined);
 });
+
+Deno.test("mixed A/B accepts text task plus photo essay and photo task plus exact typed essay", async () => {
+  for (const part of ["A", "B"] as const) {
+    for (const typedEssay of [false, true]) {
+      const ctx = context(part);
+      ctx.promptVersion = "WRITERIGHT_DIRECT_MIXED_V1";
+      ctx.textInputs = {
+        task: typedEssay ? "" : "Write an invitation.",
+        essay: typedEssay ? "I has a book." : "",
+      };
+      ctx.wordCount = typedEssay ? 4 : 0;
+      ctx.images = ctx.images.filter((i) => i.role === (typedEssay ? "task" : "essay"));
+      const value = assessment();
+      if (typedEssay) {
+        value.corrections = [];
+        const item = value.sentence_reviews.items[0] as {
+          sentence_id: string | null;
+          page: number | null;
+        };
+        item.sentence_id = "s1";
+        item.page = null;
+        value.advanced_advice.forEach((x) => x.page = null);
+      }
+      const { report } = await gradePhotos(ctx, ["only-image"], adapter(value, ["only-image"]));
+      assertEquals(report.schema_version, "2.4.0");
+      assertEquals(report.grading_mode, "full");
+      assertEquals(report.score.max, part === "A" ? 10 : 15);
+      assertEquals(report.photo_review.text_sources, ctx.textInputs);
+      if (typedEssay) assertEquals(report.word_count, 4);
+    }
+  }
+});

@@ -232,31 +232,39 @@ struct PracticeView: View {
     @StateObject private var removal = PendingRemoval()
     @ScaledMetric(relativeTo: .body) private var reportRowHeight = 88
     @ScaledMetric(relativeTo: .body) private var reportRowSpacing = 12
-    let onPhotos: () -> Void
+    @State private var selectedPart: WritingPart = .a
+    let onPhotos: (WritingPart) -> Void
     let onCreate: (WritingPart, WritingTaskDocument?) -> Void
     let onOpen: (DraftDocument) -> Void
     let onOpenReport: (GradingReportDocument) -> Void
 
-    private var tasks: [WritingTaskDocument] {
-        var seen = Set<UUID>()
-        return model.drafts.filter { !$0.isEmpty }.compactMap { seen.insert($0.task.id).inserted ? $0.task : nil }
-    }
+    private var tasks: [WritingTaskDocument] { model.reusablePracticeTasks.filter { !removal.hides($0.id) } }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 32) {
-                VStack(alignment: .leading, spacing: 10) {
-                    Text("每一页，都有往前走的痕迹。")
-                        .font(.system(.title2, design: .serif))
-                    Text("把题目和写好的作文放在一起，慢慢看清下一步。")
-                        .font(.subheadline).foregroundStyle(WriteRightTheme.secondary)
-                }
-                photoInvitation
-                Text("也可以，从空白页开始").font(.system(.headline, design: .serif))
-                LazyVGrid(columns: columns, spacing: 14) {
-                    ForEach(WritingPart.allCases) { part in
-                        PartEntry(part: part) { onCreate(part, nil) }
+                Text("今天，练哪一篇？")
+                    .font(.system(.title, design: .serif))
+                VStack(alignment: .leading, spacing: 20) {
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: typeSize.isAccessibilitySize ? 1 : 3), spacing: 10) {
+                        ForEach(WritingPart.allCases) { part in
+                            Button { selectedPart = part } label: {
+                                VStack(alignment: .leading, spacing: 12) {
+                                    Text(part.title).font(.headline)
+                                    Text("\(part.maximumScore) 分").font(.system(.subheadline, design: .serif))
+                                        .foregroundStyle(WriteRightTheme.secondary)
+                                }.frame(maxWidth: .infinity, minHeight: 64, alignment: .leading).padding(16)
+                                    .background(selectedPart == part ? WriteRightTheme.soft : WriteRightTheme.surface, in: RoundedRectangle(cornerRadius: 16))
+                                    .overlay { RoundedRectangle(cornerRadius: 16).strokeBorder(selectedPart == part ? WriteRightTheme.accent : Color.clear, lineWidth: 1.5) }
+                            }.buttonStyle(.plain).accessibilityIdentifier("practice-part-" + part.rawValue)
+                                .accessibilityAddTraits(selectedPart == part ? [.isSelected] : [])
+                        }
                     }
+                    photoInvitation
+                    Button { onCreate(selectedPart, nil) } label: {
+                        practiceAction(selectedPart == .translation ? "输入原文与译文" : "直接写作", symbol: "square.and.pencil")
+                            .padding(20).frame(minHeight: 56).background(WriteRightTheme.surface, in: RoundedRectangle(cornerRadius: 16))
+                    }.buttonStyle(.plain).accessibilityIdentifier("start-" + selectedPart.rawValue)
                 }
                 let activeJobs = model.gradingJobs.filter { $0.status != .completed }
                 if !activeJobs.isEmpty {
@@ -271,24 +279,26 @@ struct PracticeView: View {
                         }
                     }
                 }
-                let drafts = model.drafts.filter { !$0.isEmpty }
+                let drafts = model.continuingDrafts.filter { !removal.hides($0.id) }
                 if !drafts.isEmpty {
                     VStack(alignment: .leading, spacing: 15) {
                         Text("继续写").font(.title2.weight(.semibold))
                         VStack(spacing: 0) {
                             ForEach(Array(drafts.prefix(3).enumerated()), id: \.element.id) { index, draft in
                                 if index > 0 { Divider().padding(.leading, 20) }
-                                Button { onOpen(draft) } label: {
-                                    HStack(spacing: 16) {
+                                HStack(spacing: 8) {
+                                    Button { onOpen(draft) } label: {
                                         DraftRow(draft: draft, combinesAccessibility: false)
-                                        Image(systemName: "chevron.right").font(.caption.weight(.bold))
-                                            .foregroundStyle(WriteRightTheme.secondary)
-                                    }
-                                    .padding(.horizontal, 20).padding(.vertical, 8)
-                                    .contentShape(Rectangle())
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityIdentifier("continue-draft")
+                                            .frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+                                    }.buttonStyle(.plain).accessibilityIdentifier("continue-draft")
+                                    Menu {
+                                        Button("删除草稿", role: .destructive) {
+                                            removal.remove(id: draft.id, message: "已删除草稿，可撤销") { model.delete(draft) }
+                                        }
+                                    } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
+                                        .accessibilityLabel("草稿操作").accessibilityIdentifier("continue-draft-menu")
+                                }.padding(.horizontal, 20).padding(.vertical, 8)
+
                             }
                         }.background(WriteRightTheme.surface, in: RoundedRectangle(cornerRadius: 22))
                     }
@@ -296,20 +306,25 @@ struct PracticeView: View {
                 if !tasks.isEmpty {
                     VStack(alignment: .leading, spacing: 16) {
                         Text("再写一稿").font(.title2.weight(.semibold))
-                        ForEach(tasks) { task in
-                            Button { onCreate(task.part, task) } label: {
-                                HStack(spacing: 16) {
-                                    Text(task.part.rawValue).font(.system(.title, design: .serif))
-                                        .frame(width: 34).foregroundStyle(WriteRightTheme.accent)
-                                    Text(task.displayTitle).font(.headline).foregroundStyle(WriteRightTheme.ink)
-                                        .multilineTextAlignment(.leading).frame(maxWidth: .infinity, alignment: .leading)
-                                    Image(systemName: "arrow.up.right").foregroundStyle(WriteRightTheme.secondary)
-                                }.padding(20).background(WriteRightTheme.surface, in: RoundedRectangle(cornerRadius: 20))
-                            }.buttonStyle(.plain).accessibilityIdentifier("reuse-task")
+                        ForEach(tasks.prefix(3)) { task in
+                            HStack(spacing: 12) {
+                                Button { onCreate(task.part, task) } label: {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text(task.part.title).font(.caption).foregroundStyle(WriteRightTheme.secondary)
+                                        Text(task.displayTitle).font(.headline).multilineTextAlignment(.leading)
+                                    }.frame(maxWidth: .infinity, minHeight: 44, alignment: .leading).contentShape(Rectangle())
+                                }.buttonStyle(.plain).accessibilityIdentifier("reuse-task")
+                                Menu {
+                                    Button("移除再练入口", role: .destructive) {
+                                        removal.remove(id: task.id, message: "已移除再练入口，历史报告保留") { model.hideReusableTask(task) }
+                                    }
+                                } label: { Image(systemName: "ellipsis").frame(width: 44, height: 44) }
+                                    .accessibilityLabel("再练题目操作").accessibilityIdentifier("reuse-task-menu")
+                            }.padding(20).background(WriteRightTheme.surface, in: RoundedRectangle(cornerRadius: 20))
                         }
                     }
                 }
-                let reports = model.gradingReports.filter { !removal.hides($0.id) }
+                let reports = Array(model.gradingReports.filter { !removal.hides($0.id) }.prefix(3))
                 if !reports.isEmpty {
                     VStack(alignment: .leading, spacing: 15) {
                         Text("最近报告").font(.title2.weight(.semibold))
@@ -317,7 +332,7 @@ struct PracticeView: View {
                             Button { onOpenReport(report) } label: {
                                 HStack(spacing: 16) {
                                     if let score = report.report.score.value {
-                                        Text(score, format: .number.precision(.fractionLength(0...1)))
+                                        Text(score, format: .number.precision(.fractionLength(0...2)))
                                             .font(.system(.title, design: .serif)).frame(width: 42)
                                     } else {
                                         Image(systemName: "text.quote").frame(width: 42)
@@ -370,24 +385,20 @@ struct PracticeView: View {
     }
 
     private var photoInvitation: some View {
-        Button(action: onPhotos) {
+        Button { onPhotos(selectedPart) } label: {
             VStack(alignment: .leading, spacing: 24) {
                 HStack(alignment: .center, spacing: 16) {
                     VStack(alignment: .leading, spacing: 12) {
-                        Text("题目与作文，\n一起读懂。")
+                        Text(selectedPart == .translation ? "英文与译文，\n一起细读。" : "题目与作文，\n一起读懂。")
                             .font(.system(.title, design: .serif)).fixedSize(horizontal: false, vertical: true)
-                        Text("拍照或选图 · 直接看图批改")
+                        Text("题目和作答可分别选择照片或文字")
                             .font(.subheadline).foregroundStyle(WriteRightTheme.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }.frame(maxWidth: .infinity, alignment: .leading)
                     if !typeSize.isAccessibilitySize { PhotoPracticeArtwork().frame(width: 104, height: 134).accessibilityHidden(true) }
                 }
-                HStack {
-                    Label("上传照片，开始这一篇", systemImage: "camera")
-                        .font(.headline).fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 8)
-                    Image(systemName: "arrow.right")
-                }.foregroundStyle(WriteRightTheme.accent)
+                practiceAction("拍照或上传照片", symbol: "camera")
+                    .foregroundStyle(WriteRightTheme.accent)
             }
             .padding(24).frame(maxWidth: .infinity, alignment: .leading)
             .background(WriteRightTheme.soft, in: RoundedRectangle(cornerRadius: 20))
@@ -395,19 +406,22 @@ struct PracticeView: View {
         }.buttonStyle(.plain).accessibilityIdentifier("start-photo-practice")
     }
 
-    private func stageTitle(_ stage: GradingStage) -> String {
-        switch stage {
-        case .evaluate: return "评分"
-        case .correct: return "逐句纠错"
-        case .rewrite: return "生成修改稿"
-        case .validate: return "核验报告"
-        case .done: return "完成"
+    @ViewBuilder private func practiceAction(_ title: String, symbol: String) -> some View {
+        if typeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 14) {
+                Image(systemName: symbol).font(.system(size: 26)).accessibilityHidden(true)
+                Text(title).font(.headline).fixedSize(horizontal: false, vertical: true)
+            }.frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            HStack(spacing: 14) {
+                Image(systemName: symbol).accessibilityHidden(true)
+                Text(title).font(.headline).fixedSize(horizontal: false, vertical: true)
+                Spacer(minLength: 8)
+                Image(systemName: "arrow.right").accessibilityHidden(true)
+            }
         }
     }
 
-    private var columns: [GridItem] {
-        Array(repeating: GridItem(.flexible(), spacing: 14), count: typeSize.isAccessibilitySize ? 1 : 2)
-    }
 }
 
 private struct PhotoPracticeArtwork: View {

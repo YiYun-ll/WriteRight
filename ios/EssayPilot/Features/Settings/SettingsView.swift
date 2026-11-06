@@ -150,6 +150,7 @@ struct SettingsView: View {
 }
 
 private struct ReportShelfView: View {
+    @Environment(\.dynamicTypeSize) private var typeSize
     @EnvironmentObject private var model: AppModel
     @StateObject private var removal = PendingRemoval()
     @State private var selected: GradingReportDocument?
@@ -172,16 +173,23 @@ private struct ReportShelfView: View {
         }
     }
 
+    private var typePicker: some View {
+        Picker("题型", selection: $part) {
+            Text("全部").tag("all")
+            ForEach(WritingPart.allCases) { Text($0.title).tag($0.rawValue) }
+        }
+    }
+
     var body: some View {
         Group {
             if visible.isEmpty {
                 ContentUnavailableView("还没有回信", systemImage: "doc.text", description: Text("完成一次批改后，报告会收在这里。"))
             } else {
                 VStack(spacing: 0) {
-                    Picker("题型", selection: $part) {
-                        Text("全部").tag("all")
-                        ForEach(WritingPart.allCases) { Text($0.title).tag($0.rawValue) }
-                    }.pickerStyle(.segmented).padding(.horizontal, 24).padding(.vertical, 10)
+                    Group {
+                        if typeSize.isAccessibilitySize { typePicker.pickerStyle(.menu) }
+                        else { typePicker.pickerStyle(.segmented) }
+                    }.padding(.horizontal, 24).padding(.vertical, 10)
                     if filtered.isEmpty {
                         ContentUnavailableView.search(text: search)
                     } else {
