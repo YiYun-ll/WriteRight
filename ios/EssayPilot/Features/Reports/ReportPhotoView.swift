@@ -5,6 +5,8 @@ import UIKit
 struct ReportPhotoView: View {
     @EnvironmentObject private var app: AppModel
     let source: PhotoSource
+    var translation = false
+    private var roleTitle: String { translation ? (source.role == "task" ? "英文原文" : "译文") : (source.role == "task" ? "题目" : "作文") }
     @State private var image: UIImage?
     @State private var failed = false
     @State private var attempt = 0
@@ -12,11 +14,11 @@ struct ReportPhotoView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("\(source.role == "task" ? "题目" : "作文") · 第 \(source.page) 页").font(.subheadline).foregroundStyle(WriteRightTheme.secondary)
+            Text("\(roleTitle) · 第 \(source.page) 页").font(.subheadline).foregroundStyle(WriteRightTheme.secondary)
             if let image {
                 Button { zoom = true } label: {
                     Image(uiImage: image).resizable().scaledToFit().frame(maxWidth: .infinity, maxHeight: 320)
-                }.buttonStyle(.plain).accessibilityLabel("放大\(source.role == "task" ? "题目" : "作文")第\(source.page)页")
+                }.buttonStyle(.plain).accessibilityLabel("放大\(roleTitle)第\(source.page)页")
             } else if failed {
                 Button("原图暂未取回，点此重试") { failed = false; attempt += 1 }.frame(minHeight: 44)
             } else { ProgressView("正在取回原图").frame(maxWidth: .infinity, minHeight: 100) }

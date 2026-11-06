@@ -1,0 +1,293 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "TranslationAssessmentV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "source_status",
+    "answer_status",
+    "coverage",
+    "notice_zh",
+    "overall_comment",
+    "accuracy",
+    "completeness",
+    "fluency",
+    "sentences",
+    "typos",
+    "revised_translation",
+    "changes",
+    "top_issues",
+    "expressions",
+    "practice_advice"
+  ],
+  "properties": {
+    "source_status": {
+      "enum": [
+        "readable",
+        "missing",
+        "unclear"
+      ]
+    },
+    "answer_status": {
+      "enum": [
+        "readable",
+        "unclear",
+        "blank"
+      ]
+    },
+    "coverage": {
+      "enum": [
+        "complete",
+        "partial",
+        "unreadable"
+      ]
+    },
+    "notice_zh": {
+      "type": "string",
+      "minLength": 0,
+      "maxLength": 20000
+    },
+    "overall_comment": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000
+    },
+    "accuracy": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000
+    },
+    "completeness": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000
+    },
+    "fluency": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000
+    },
+    "sentences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "index",
+          "source_page",
+          "answer_page",
+          "english",
+          "student",
+          "status",
+          "points",
+          "analysis",
+          "structure",
+          "revised"
+        ],
+        "properties": {
+          "index": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "source_page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 4
+          },
+          "answer_page": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1,
+            "maximum": 4
+          },
+          "english": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          },
+          "student": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 20000
+          },
+          "status": {
+            "enum": [
+              "reviewed",
+              "uncertain"
+            ]
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "meaning",
+                "max",
+                "earned",
+                "explanation"
+              ],
+              "properties": {
+                "meaning": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 20000
+                },
+                "max": {
+                  "type": "number",
+                  "minimum": 0.25,
+                  "maximum": 15,
+                  "multipleOf": 0.25
+                },
+                "earned": {
+                  "anyOf": [
+                    {
+                      "type": "number",
+                      "minimum": 0,
+                      "maximum": 15,
+                      "multipleOf": 0.25
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "explanation": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 20000
+                }
+              }
+            },
+            "minItems": 1,
+            "maxItems": 20
+          },
+          "analysis": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          },
+          "structure": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          },
+          "revised": {
+            "type": "string",
+            "minLength": 0,
+            "maxLength": 20000
+          }
+        }
+      },
+      "maxItems": 80
+    },
+    "typos": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "original",
+          "corrected",
+          "reason"
+        ],
+        "properties": {
+          "original": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          },
+          "corrected": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          }
+        }
+      },
+      "maxItems": 100
+    },
+    "revised_translation": {
+      "type": "string",
+      "minLength": 0,
+      "maxLength": 20000
+    },
+    "changes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "text",
+          "reason_zh"
+        ],
+        "properties": {
+          "text": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          },
+          "reason_zh": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          }
+        }
+      },
+      "maxItems": 80
+    },
+    "top_issues": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 20000
+      },
+      "maxItems": 3
+    },
+    "expressions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "expression",
+          "meaning",
+          "usage"
+        ],
+        "properties": {
+          "expression": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          },
+          "meaning": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          },
+          "usage": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 20000
+          }
+        }
+      },
+      "maxItems": 5
+    },
+    "practice_advice": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 20000
+    }
+  }
+}

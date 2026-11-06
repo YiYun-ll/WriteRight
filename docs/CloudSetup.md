@@ -125,3 +125,27 @@ EssayPilot-dev已应用20261031010000_notebook_sync迁移并发布submit-grading
 ## 2026-11-01 已授权开发云更新（小猫成长同步）
 
 EssayPilot-dev已应用20261101090000_companion_growth：新增companion_profiles表（RLS只读本人）与merge_companion(jsonb)合并函数，只新增表和函数，未改已有数据、函数、套餐或账单。脚本scripts/apply-companion-cloud-migration.mjs需显式--apply --project-ref且与已关联项目一致，迁移与历史登记在同一事务、重复执行无副作用。回读结果与本地pgTAP见progress.md。旧版客户端不调用该函数，行为不变。
+
+
+## 2026-11-05 翻译批改增量部署
+
+用户本轮明确授权“进行云端部署和真实 DeepSeek 翻译联调”。目标仍为EssayPilot-dev（tdcxdiqvrfmppaqikgxu，新加坡），部署前ACTIVE_HEALTHY，既有4个账号、8个题目、11份提交/报告，9个迁移，无运行或排队任务。
+
+- 原子应用并登记`20261105100000_translation_grading`；重复执行历史/原文校验通过。T独立15分，A仍10分，分数numeric(5,2)。未重建表或清空既有数据。
+- 发布`submit-grading` v8、`submit-photo-grading` v7、`grading-worker` v11，均ACTIVE；前两个维持JWT校验，Worker维持x-worker-key认证。未更改其他函数、密钥、SMTP、套餐、计费或既有分钟cron。
+- 真实deepseek-flash云验收41项通过：五句专项文字、两页英文+两页中文直批、缺英文不评分、逐句解析/译法/修改稿/复盘、错字单列扣0.25、数据库小数精度、参考译文幂等冲突、跨账号隔离、原图私有访问、无全文转录、模型用量、删号及图片清理。只轮询状态，未人工触发Worker。
+- 文字专项12.75/15，照片普通篇章13.75/15；前者固定每句3分，后者按内容分配，不能将这次分差当作重复评分波动基线。两份都发现第四句漏掉否定，原译中的“答按”保留并建议“答案”，错字扣0.25。照片有一次队列自动重试后完成，不能称为首轮无重试。
+- 三份真实云报告用当前Swift领域DTO解码并往返编码一致。没有重新打包或安装iOS应用，本轮不代表新客户端已安装到手机。
+- 两个一次性合成账号已删除并通过管理接口确认不存在；英文/中文/原始图片与完整报告仅留在ignored测试目录，不使用私人作文或真实邮箱，不发送测试验证码邮件。人工评分一致性、手写与真机相机仍待验收。
+
+证据：`artifacts/cloud-translation-20261105/2026-11-05T10-30-40-703Z/acceptance.json`、`native-decoding.json`、`cloud-final-state.json`；脚本与合同见`docs/TranslationGrading.md`。
+
+## 2026-11-06 组合练习增量部署
+
+沿用本聊天云部署与真实联调授权，目标仍为EssayPilot-dev。原子应用并登记`20261105200000_mixed_practice`，允许题图+文字作答等混合快照，保留service-only入队权限、用户/图片路径绑定；发布`grading-worker` v12和`submit-photo-grading` v8（ACTIVE）。纯文字`submit-grading`仍v8，其他函数、密钥、SMTP、分钟cron、套餐及计费未改。
+
+新混合A/B报告2.4.0、T报告3.1.0，携带原始`photo_review.text_sources`。同侧文字/图片互斥、至少一张实际图片；纯文字用原端点。先迁移、再Worker/提交函数、再客户端，保留旧照片合同读取。回退客户端不能同时降级Worker丢失在途组合任务支持。详细DTO、幂等与页码约束见`MixedPracticeAndWidgets.md`。
+
+真实deepseek-flash四组混合测试40项通过，A两组7/10、T两组13.75/15与13.25/15；翻译任务有自动重试。四份报告通过原生解码/往返，测试账号均删除且管理回读不存在。最终回读测试图片0、活跃Job0、账号4/题目8/报告11，与基线一致，不把合成印刷图片联调当作手写或人工评分验收。
+
+证据：`artifacts/cloud-mixed/2026-11-05T16-16-24-895Z/acceptance.json`、`artifacts/practice-widget-fixes-20261106/{functions,cloud-audit,native-decoding}.json`。复现时先运行`swift scripts/generate-translation-fixtures.swift`与`swift scripts/generate-mixed-fixtures.swift`，再运行`scripts/test-cloud-mixed-practice.mjs`；该脚本会真实调用模型，需现有开发云配置和明确联调授权。

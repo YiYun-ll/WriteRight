@@ -35,6 +35,8 @@ struct WidgetSettingsView: View {
                     do {
                         guard let data = try await item.loadTransferable(type: Data.self) else { throw CocoaError(.fileReadCorruptFile) }
                         try await model.saveWidgetBackground(data); message = "背景已保存，桌面小组件会改用这张照片。"
+                    } catch WidgetStorageError.sharedAccessUnavailable {
+                        message = "当前安装的签名未允许共享照片。请用原账户重签并保留小组件扩展与共享权限。"
                     } catch { message = "背景未能保存，请重新选择照片。" }
                 }
             }

@@ -4,6 +4,7 @@ export const PROMPT_VERSION = "WRITERIGHT_GRADING_V1_5";
 export const RUBRIC_VERSION: Record<Part, string> = {
   A: "KY_EN2_A_V2",
   B: "KY_EN2_B_V2",
+  T: "KY_EN2_TRANSLATION_V1",
 };
 
 /** Reference count. Keep aligned with the native WordCounter; not an official exam rule. */
@@ -55,7 +56,7 @@ export async function makeContext(
     throw new Error("INVALID_ESSAY_LENGTH");
   }
   if (
-    !["A", "B"].includes(input.part) || !Number.isInteger(input.task.revision) ||
+    !["A", "B", "T"].includes(input.part) || !Number.isInteger(input.task.revision) ||
     input.task.revision < 1 || input.task.prompt.length > 20_000 ||
     input.task.requirements.length > 30 ||
     input.task.requirements.some((point) => !point.id || !point.text.trim()) ||
@@ -74,12 +75,21 @@ export async function makeContext(
     contentHash: Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, "0"))
       .join(""),
     rubricVersion: RUBRIC_VERSION[input.part],
-    promptVersion: PROMPT_VERSION,
+    promptVersion: input.part === "T" ? "WRITERIGHT_TRANSLATION_V1" : PROMPT_VERSION,
     modelID,
   };
 }
 
 export function scoreBand(part: Part, value: number): string {
+  if (part === "T") {
+    return value >= 13
+      ? "13–15 分档"
+      : value >= 9
+      ? "9–12 分档"
+      : value >= 5
+      ? "5–8 分档"
+      : "0–4 分档";
+  }
   const boundaries = part === "A" ? [9, 7, 5, 3, 1] : [13, 10, 7, 4, 1];
   return ["优秀", "良好", "中等", "较差", "差"][boundaries.findIndex((min) => value >= min)] ??
     "无有效作答";

@@ -1,15 +1,26 @@
+import {
+  MIXED_TRANSLATION_PROMPT_VERSION,
+  TRANSLATION_PROMPT_VERSION,
+  TRANSLATION_RUBRIC_VERSION,
+} from "../grading/translation.ts";
+import { countWords } from "../grading/context.ts";
 import { isInlineImage } from "../inline-image.ts";
-import { PHOTO_PROMPT_VERSION, PHOTO_RUBRIC_VERSION } from "../grading/photo-grading.ts";
+import {
+  MIXED_PHOTO_PROMPT_VERSION,
+  PHOTO_PROMPT_VERSION,
+  PHOTO_RUBRIC_VERSION,
+} from "../grading/photo-grading.ts";
 import type { PhotoContext, PhotoSource } from "../grading/photo-types.ts";
 import type { Part } from "../grading/types.ts";
 import type { JobStore } from "./store.ts";
 import { statusForJob } from "./service.ts";
 export interface PhotoSubmissionInput {
   idemKey: string;
-  task: { id: string; part: Part };
+  task: { id: string; part: Part; referenceTranslation?: string };
   submission: { id: string };
   taskImages: string[];
   essayImages: string[];
+  textInputs?: { task: string; essay: string };
 }
 export async function photoHash(text: string | Uint8Array): Promise<string> {
   const bytes = typeof text === "string" ? new TextEncoder().encode(text) : text;
@@ -28,11 +39,26 @@ export async function submitPhotos(
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   if (
     !input || !uuid.test(input.idemKey ?? "") || !uuid.test(input.task?.id ?? "") ||
-    !uuid.test(input.submission?.id ?? "") || !["A", "B"].includes(input.task?.part) ||
+    !uuid.test(input.submission?.id ?? "") || !["A", "B", "T"].includes(input.task?.part) ||
+    (input.task?.referenceTranslation !== undefined &&
+      (typeof input.task.referenceTranslation !== "string" ||
+        input.task.referenceTranslation.length > 20000)) ||
     !Array.isArray(input.taskImages) || input.taskImages.length > 4 ||
-    !Array.isArray(input.essayImages) || input.essayImages.length < 1 ||
+    !Array.isArray(input.essayImages) ||
+    input.essayImages.length <
+      ((typeof input.textInputs?.essay === "string" && input.textInputs.essay.trim()) ? 0 : 1) ||
     input.essayImages.length > 4 ||
     [...input.taskImages, ...input.essayImages].some((image) => !isInlineImage(image))
+  ) throw new Error("INVALID_PHOTO_SUBMISSION");
+  const text = input.textInputs;
+  if (
+    text !== undefined &&
+    (!text || typeof text.task !== "string" || typeof text.essay !== "string" ||
+      text.task.length > 20000 || text.essay.length > 30000 ||
+      (!text.task.trim() && !text.essay.trim()) ||
+      (text.task.trim() && input.taskImages.length > 0) ||
+      (text.essay.trim() && input.essayImages.length > 0) ||
+      input.taskImages.length + input.essayImages.length < 1)
   ) throw new Error("INVALID_PHOTO_SUBMISSION");
   const roleImages = [
     ...input.taskImages.map((image, index) => ({ image, role: "task" as const, page: index + 1 })),
@@ -55,7 +81,12 @@ export async function submitPhotos(
     });
   }
   const contentHash = await photoHash(
-    [input.task.part, ...sources.map((item) => `${item.role}:${item.page}:${item.checksum}`)].join(
+    [
+      input.task.part,
+      ...(input.task.referenceTranslation ? [input.task.referenceTranslation] : []),
+      ...(text ? [`task-text:${text.task}`, `essay-text:${text.essay}`] : []),
+      ...sources.map((item) => `${item.role}:${item.page}:${item.checksum}`),
+    ].join(
       "\n",
     ),
   );
@@ -78,12 +109,16 @@ export async function submitPhotos(
     source: "photo_grading_v2",
     part: input.task.part,
     originalText: "",
-    wordCount: 0,
+    wordCount: text?.essay ? countWords(text.essay) : 0,
+    ...(text ? { textInputs: text } : {}),
     contentHash,
     task: {
+      ...(input.task.referenceTranslation !== undefined
+        ? { referenceTranslation: input.task.referenceTranslation }
+        : {}),
       prompt: "",
       revision: 1,
-      confirmed: input.taskImages.length > 0,
+      confirmed: input.taskImages.length > 0 || !!text?.task.trim(),
       requirements: [],
       chartFacts: [],
       fingerprint: input.taskImages.length
@@ -93,12 +128,18 @@ export async function submitPhotos(
             ...sources.filter((item) => item.role === "task").map((item) => item.checksum),
           ].join("\n"),
         )
+        : text?.task.trim()
+        ? await photoHash([input.task.part, `task-text:${text.task}`].join("\n"))
         : null,
     },
     images: sources,
     modelID,
-    promptVersion: PHOTO_PROMPT_VERSION,
-    rubricVersion: PHOTO_RUBRIC_VERSION[input.task.part],
+    promptVersion: input.task.part === "T"
+      ? (text ? MIXED_TRANSLATION_PROMPT_VERSION : TRANSLATION_PROMPT_VERSION)
+      : (text ? MIXED_PHOTO_PROMPT_VERSION : PHOTO_PROMPT_VERSION),
+    rubricVersion: input.task.part === "T"
+      ? TRANSLATION_RUBRIC_VERSION
+      : PHOTO_RUBRIC_VERSION[input.task.part],
   };
   const uploaded: string[] = [];
   let enqueueAttempted = false;
@@ -115,11 +156,16 @@ export async function submitPhotos(
       task: {
         id: input.task.id,
         part: input.task.part,
-        title: `${input.task.part === "A" ? "小作文" : "大作文"} · 照片练习`,
+        title: `${
+          input.task.part === "A" ? "小作文" : input.task.part === "T" ? "翻译" : "大作文"
+        } · 照片练习`,
+        ...(input.task.referenceTranslation !== undefined
+          ? { referenceTranslation: input.task.referenceTranslation }
+          : {}),
         prompt: "",
         requirements: [],
         revision: 1,
-        confirmed: input.taskImages.length > 0,
+        confirmed: input.taskImages.length > 0 || !!text?.task.trim(),
       },
       submission: { id: input.submission.id, originalText: "" },
     }, context);

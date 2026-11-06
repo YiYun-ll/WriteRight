@@ -2,6 +2,7 @@ import SwiftUI
 
 struct HistoryView: View {
     @EnvironmentObject private var model: AppModel
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var search = ""
     @State private var part = "all"
     @StateObject private var removal = PendingRemoval()
@@ -16,6 +17,13 @@ struct HistoryView: View {
         }
     }
 
+    private var typePicker: some View {
+        Picker("题型", selection: $part) {
+            Text("全部").tag("all")
+            ForEach(WritingPart.allCases) { Text($0.title).tag($0.rawValue) }
+        }
+    }
+
     var body: some View {
         Group {
             if visible.isEmpty {
@@ -24,10 +32,10 @@ struct HistoryView: View {
                 } actions: { Button("写一篇", action: onCreate).buttonStyle(.borderedProminent) }
             } else {
                 VStack(spacing: 12) {
-                    Picker("题型", selection: $part) {
-                        Text("全部").tag("all")
-                        ForEach(WritingPart.allCases) { Text($0.title).tag($0.rawValue) }
-                    }.pickerStyle(.segmented).padding(.horizontal, 24)
+                    Group {
+                        if typeSize.isAccessibilitySize { typePicker.pickerStyle(.menu) }
+                        else { typePicker.pickerStyle(.segmented) }
+                    }.padding(.horizontal, 24)
                     if filtered.isEmpty {
                         ContentUnavailableView.search(text: search)
                     } else {

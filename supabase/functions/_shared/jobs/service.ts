@@ -1,3 +1,4 @@
+import { gradeTranslation, validateTranslationReport } from "../grading/translation.ts";
 import { makeContext } from "../grading/context.ts";
 import { GradingFailed, runGrading } from "../grading/run.ts";
 import type { GradingContext, GradingReport, ModelAdapter } from "../grading/types.ts";
@@ -10,9 +11,10 @@ export interface SubmitGradingInput {
   idemKey: string;
   task: {
     id: string;
-    part: "A" | "B";
+    part: "A" | "B" | "T";
     title?: string;
     prompt: string;
+    referenceTranslation?: string;
     requirements: { id: string; text: string }[];
     revision: number;
     confirmed: boolean;
@@ -33,6 +35,9 @@ export async function submitGrading(
     originalText: input.submission.originalText,
     task: {
       prompt: input.task.prompt,
+      ...(input.task.referenceTranslation !== undefined
+        ? { referenceTranslation: input.task.referenceTranslation }
+        : {}),
       requirements: input.task.requirements,
       revision: input.task.revision,
       confirmed: input.task.confirmed,
@@ -104,12 +109,15 @@ export async function processNextJob(store: JobStore, adapter: ModelAdapter): Pr
       if (
         result.report.part !== context.part ||
         result.report.prompt_version !== context.promptVersion ||
+        JSON.stringify(result.report.photo_review.text_sources ?? null) !==
+          JSON.stringify(context.textInputs ?? null) ||
         result.report.photo_review.sources.length !== context.images.length ||
         result.report.photo_review.sources.some((source, index) =>
           source.path !== context.images[index]?.path ||
           source.checksum !== context.images[index]?.checksum
         )
       ) throw new Error("PHOTO_INTEGRITY_FAILED");
+      if (context.part === "T") validateTranslationReport(result.report, context);
       await store.finish(job, result.report, []);
       return "completed";
     }
@@ -122,7 +130,9 @@ export async function processNextJob(store: JobStore, adapter: ModelAdapter): Pr
     ) throw new Error("JOB_SNAPSHOT_MISMATCH");
 
     if (!job.stage_results.evaluate) {
-      const { report, attempts } = await runGrading(context, adapter);
+      const { report, attempts } = context.part === "T"
+        ? await gradeTranslation(context, [], adapter)
+        : await runGrading(context, adapter);
       job = await store.saveStage(
         job,
         "evaluate",
@@ -152,7 +162,8 @@ export async function processNextJob(store: JobStore, adapter: ModelAdapter): Pr
         review: report.review,
       }, "validate");
     }
-    validateReport(report, context);
+    if (context.part === "T") validateTranslationReport(report, context);
+    else validateReport(report, context);
     await store.finish(job, report, context.sentences);
     return "completed";
   } catch (error) {
@@ -200,7 +211,10 @@ function validateInput(value: SubmitGradingInput): void {
   const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   if (
     !value || typeof value !== "object" || !uuid.test(value.idemKey ?? "") ||
-    !value.task || !uuid.test(value.task.id ?? "") || !["A", "B"].includes(value.task.part) ||
+    !value.task || !uuid.test(value.task.id ?? "") || !["A", "B", "T"].includes(value.task.part) ||
+    (value.task.referenceTranslation !== undefined &&
+      (typeof value.task.referenceTranslation !== "string" ||
+        value.task.referenceTranslation.length > 20000)) ||
     typeof value.task.prompt !== "string" || typeof value.task.confirmed !== "boolean" ||
     !Number.isInteger(value.task.revision) || value.task.revision < 1 ||
     (value.task.title !== undefined &&

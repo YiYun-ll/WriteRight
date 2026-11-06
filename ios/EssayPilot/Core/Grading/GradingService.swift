@@ -2,7 +2,7 @@ import Foundation
 import Supabase
 
 protocol GradingService: Sendable {
-    func submitPhotos(taskID: UUID, part: WritingPart, submissionID: UUID, idemKey: UUID, taskImages: [Data], essayImages: [Data]) async throws -> GradingStatusResponse
+    func submitPhotos(taskID: UUID, part: WritingPart, submissionID: UUID, idemKey: UUID, taskImages: [Data], essayImages: [Data], referenceTranslation: String?, textInputs: PracticeTextInputs?) async throws -> GradingStatusResponse
     func photoData(_ source: PhotoSource) async throws -> Data
     func submit(task: WritingTaskDocument, submissionID: UUID, originalText: String, idemKey: UUID) async throws -> GradingStatusResponse
     func transcribeImage(_ image: Data) async throws -> ImageTranscriptionResponse
@@ -12,7 +12,7 @@ protocol GradingService: Sendable {
 }
 
 extension GradingService {
-    func submitPhotos(taskID: UUID, part: WritingPart, submissionID: UUID, idemKey: UUID, taskImages: [Data], essayImages: [Data]) async throws -> GradingStatusResponse { throw GradingServiceError.invalidResponse }
+    func submitPhotos(taskID: UUID, part: WritingPart, submissionID: UUID, idemKey: UUID, taskImages: [Data], essayImages: [Data], referenceTranslation: String? = nil, textInputs: PracticeTextInputs? = nil) async throws -> GradingStatusResponse { throw GradingServiceError.invalidResponse }
     func photoData(_ source: PhotoSource) async throws -> Data { throw GradingServiceError.invalidResponse }
     func analyzePhotos(part: WritingPart, taskImages: [Data], essayImages: [Data]) async throws -> PhotoAnalysisResponse { throw GradingServiceError.invalidResponse }
     func transcribeImage(_ image: Data) async throws -> ImageTranscriptionResponse { throw GradingServiceError.invalidResponse }
@@ -54,6 +54,7 @@ struct SupabaseGradingService: GradingService {
                 let revision: Int
                 let confirmed: Bool
                 let chartFacts: [ChartFactDocument]
+                let referenceTranslation: String?
             }
             struct Submission: Encodable { let id: UUID; let originalText: String }
             let idemKey: UUID
@@ -65,22 +66,23 @@ struct SupabaseGradingService: GradingService {
             task: .init(
                 id: task.id, part: task.part, title: task.title, prompt: task.prompt,
                 requirements: task.requirements.map { .init(id: $0.id, text: $0.text) },
-                revision: task.revision, confirmed: task.isConfirmed, chartFacts: task.chartFacts ?? []
+                revision: task.revision, confirmed: task.isConfirmed, chartFacts: task.chartFacts ?? [], referenceTranslation: task.referenceTranslation
             ),
             submission: .init(id: submissionID, originalText: originalText)
         )
         return try await request("submit-grading", method: "POST", body: input)
     }
 
-    func submitPhotos(taskID: UUID, part: WritingPart, submissionID: UUID, idemKey: UUID, taskImages: [Data], essayImages: [Data]) async throws -> GradingStatusResponse {
+    func submitPhotos(taskID: UUID, part: WritingPart, submissionID: UUID, idemKey: UUID, taskImages: [Data], essayImages: [Data], referenceTranslation: String? = nil, textInputs: PracticeTextInputs? = nil) async throws -> GradingStatusResponse {
         struct Input: Encodable {
-            struct Topic: Encodable { let id: UUID; let part: WritingPart }
+            struct Topic: Encodable { let id: UUID; let part: WritingPart; let referenceTranslation: String? }
             struct Submission: Encodable { let id: UUID }
             let idemKey: UUID; let task: Topic; let submission: Submission
             let taskImages: [String]; let essayImages: [String]
+            let textInputs: PracticeTextInputs?
         }
         func inline(_ data: Data) -> String { "data:image/jpeg;base64," + data.base64EncodedString() }
-        return try await request("submit-photo-grading", method: "POST", body: Input(idemKey: idemKey, task: .init(id: taskID, part: part), submission: .init(id: submissionID), taskImages: taskImages.map(inline), essayImages: essayImages.map(inline)))
+        return try await request("submit-photo-grading", method: "POST", body: Input(idemKey: idemKey, task: .init(id: taskID, part: part, referenceTranslation: referenceTranslation), submission: .init(id: submissionID), taskImages: taskImages.map(inline), essayImages: essayImages.map(inline), textInputs: textInputs))
     }
 
     func photoData(_ source: PhotoSource) async throws -> Data {
@@ -163,7 +165,7 @@ actor UITestGradingService: GradingService {
     func photoData(_ source: PhotoSource) async throws -> Data {
         guard let data = photos[source.path] else { throw GradingServiceError.invalidResponse }; return data
     }
-    func submitPhotos(taskID: UUID, part: WritingPart, submissionID: UUID, idemKey: UUID, taskImages: [Data], essayImages: [Data]) async throws -> GradingStatusResponse {
+    func submitPhotos(taskID: UUID, part: WritingPart, submissionID: UUID, idemKey: UUID, taskImages: [Data], essayImages: [Data], referenceTranslation: String? = nil, textInputs: PracticeTextInputs? = nil) async throws -> GradingStatusResponse {
         try await Task.sleep(for: .milliseconds(800))
         var sources: [PhotoSource] = []
         for (role, data) in [("task", taskImages), ("essay", essayImages)] {
@@ -175,8 +177,9 @@ actor UITestGradingService: GradingService {
         }
         var task = WritingTaskDocument.empty(part: part); task.id = taskID
         if !taskImages.isEmpty { task.prompt = "Synthetic invitation"; task.confirmedAt = .now }
-        let photo = PhotoReviewPayload(sources: sources, taskFingerprint: taskImages.isEmpty ? nil : "fixture", taskStatus: taskImages.isEmpty ? "missing" : "readable", strengths: ["邀请的目的表达得很清楚。"], uncertainties: [], corrections: [.init(page: 1, original: "I has", corrected: "I have", reason: "主语为 I 时使用 have。", category: "主谓一致", severity: "required")], wordCountEstimated: true)
-        return Self.completed(task: task, submissionID: submissionID, originalText: "", jobID: idemKey, photo: photo)
+        if let text = textInputs?.task, !text.isEmpty { task.prompt = text; task.confirmedAt = .now }
+        let photo = PhotoReviewPayload(sources: sources, taskFingerprint: taskImages.isEmpty ? nil : "fixture", taskStatus: taskImages.isEmpty ? "missing" : "readable", strengths: ["邀请的目的表达得很清楚。"], uncertainties: [], corrections: [.init(page: 1, original: "I has", corrected: "I have", reason: "主语为 I 时使用 have。", category: "主谓一致", severity: "required")], wordCountEstimated: textInputs?.essay.isEmpty ?? true, textSources: textInputs)
+        return Self.completed(task: task, submissionID: submissionID, originalText: textInputs?.essay ?? "", jobID: idemKey, photo: photo)
     }
 
     func analyzePhotos(part: WritingPart, taskImages: [Data], essayImages: [Data]) async throws -> PhotoAnalysisResponse {
@@ -193,7 +196,8 @@ actor UITestGradingService: GradingService {
     }
 
     private static func completed(task: WritingTaskDocument, submissionID: UUID, originalText: String, jobID: UUID, photo: PhotoReviewPayload? = nil) -> GradingStatusResponse {
-        let sentences = SentenceSegmenter.sentences(in: originalText)
+        if task.part == .translation { return UITestTranslationFixture.response(task: task, submissionID: submissionID, jobID: jobID, photo: photo) }
+        let sentences = photo == nil ? SentenceSegmenter.sentences(in: originalText) : []
         let first = sentences.first
         let corrected = first?.original.replacingOccurrences(of: "has", with: "have") ?? first?.original
         let minimum = photo == nil ? originalText.replacingOccurrences(of: "has", with: "have") : "I have a book. It is useful."

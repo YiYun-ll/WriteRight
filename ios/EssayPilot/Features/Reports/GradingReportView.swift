@@ -21,11 +21,18 @@ struct GradingReportView: View {
                     VStack(alignment: .leading, spacing: 24) {
                         switch section {
                         case "sentences":
-                            ReportReadingControls(requiredOnly: $requiredOnly, category: $category, detailed: $detailed, categories: correctionCategories)
-                            if let photo = document.report.photoReview { photoAdvice(photo) }
-                            else if document.report.sentenceReviews == nil { SentenceReportView(document: document, requiredOnly: requiredOnly, category: category, detailed: detailed) }
-                            SentenceReviewView(review: document.report.sentenceReviews, requiredOnly: requiredOnly, detailed: detailed)
-                            if detailed { DevelopmentAdviceView(advice: document.report.advancedAdvice) }
+                            if let translation = document.report.translationReview {
+                                if let photo = document.report.photoReview {
+                                    ForEach(photo.sources.filter { $0.role == "essay" }) { ReportPhotoView(source: $0, translation: document.part == .translation) }
+                                }
+                                TranslationSentenceList(review: translation)
+                            } else {
+                                ReportReadingControls(requiredOnly: $requiredOnly, category: $category, detailed: $detailed, categories: correctionCategories)
+                                if let photo = document.report.photoReview { photoAdvice(photo) }
+                                else if document.report.sentenceReviews == nil { SentenceReportView(document: document, requiredOnly: requiredOnly, category: category, detailed: detailed) }
+                                SentenceReviewView(review: document.report.sentenceReviews, requiredOnly: requiredOnly, detailed: detailed)
+                                if detailed { DevelopmentAdviceView(advice: document.report.advancedAdvice) }
+                            }
                         case "rewrites": rewritesView
                         case "review": reviewView
                         default: overviewView
@@ -50,27 +57,30 @@ struct GradingReportView: View {
             VStack(alignment: .leading, spacing: 14) {
                 if let value = document.report.score.value {
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
-                        Text(value, format: .number.precision(.fractionLength(0...1)))
+                        Text(value, format: .number.precision(.fractionLength(0...2)))
                             .font(.system(size: 64, weight: .medium, design: .serif))
                         Text("/ \(document.report.score.max)").font(.title3).foregroundStyle(WriteRightTheme.secondary)
                         Spacer()
                         if let band = document.report.score.band { Text(band).font(.title3.weight(.semibold)) }
                     }
                     if let range = document.report.score.range, range.count == 2 {
-                        Text("参考区间 \(range[0], format: .number.precision(.fractionLength(0...1)))～\(range[1], format: .number.precision(.fractionLength(0...1))) 分")
+                        Text("参考区间 \(range[0], format: .number.precision(.fractionLength(0...2)))～\(range[1], format: .number.precision(.fractionLength(0...2))) 分")
                             .font(.subheadline).foregroundStyle(WriteRightTheme.secondary)
                     }
                     Text("AI 模拟估分，不代替正式阅卷。").font(.footnote).foregroundStyle(WriteRightTheme.secondary)
                 } else {
-                    Text("语言批改").font(.largeTitle.weight(.semibold))
+                    Text(document.part == .translation ? "翻译反馈" : "语言批改").font(.largeTitle.weight(.semibold))
                     Text(document.report.photoReview == nil ? "题目未完整确认，因此不提供分数。" : "题面缺失、图片不清或信息不足时，只提供能确认的建议。").font(.subheadline).foregroundStyle(WriteRightTheme.secondary)
                 }
-                if document.report.wordCount > 0 {
+                if document.part != .translation && document.report.wordCount > 0 {
                     Text("\(document.report.photoReview == nil ? "" : "约 ")\(document.report.wordCount) 词").font(.subheadline.monospacedDigit()).foregroundStyle(WriteRightTheme.secondary)
                 }
             }
             .padding(22).frame(maxWidth: .infinity, alignment: .leading).glassSurface()
             if let photo = document.report.photoReview {
+                if let text = photo.textSources?.task, !text.isEmpty {
+                    DisclosureGroup(document.part == .translation ? "英文原文" : "题目原文") { Text(text).font(.body).textSelection(.enabled).padding(.top, 12) }
+                }
                 if !photo.strengths.isEmpty {
                     VStack(alignment: .leading, spacing: 12) {
                         Text("这一篇，值得留下的地方").font(.system(.title3, design: .serif))
@@ -87,9 +97,12 @@ struct GradingReportView: View {
                 }
                 if photo.sources.contains(where: { $0.role == "task" }) {
                     DisclosureGroup("查看这次的题目原图") {
-                        ForEach(photo.sources.filter { $0.role == "task" }) { ReportPhotoView(source: $0).padding(.top, 14) }
+                        ForEach(photo.sources.filter { $0.role == "task" }) { ReportPhotoView(source: $0, translation: document.part == .translation).padding(.top, 14) }
                     }.font(.headline)
                 }
+            }
+            if let translation = document.report.translationReview {
+                TranslationScoreBreakdown(review: translation, score: document.report.score.value)
             }
             GentleNote(text: "分数记录这一次的落点。下一次，先把一处表达写得更清楚就好。")
             Text(document.report.overallComment).font(.body).lineSpacing(5)
@@ -123,6 +136,7 @@ struct GradingReportView: View {
     private func photoAdvice(_ photo: PhotoReviewPayload) -> some View {
         VStack(alignment: .leading, spacing: 22) {
             Text("原稿与建议").font(.system(.title3, design: .serif))
+            if let text = photo.textSources?.essay, !text.isEmpty { Text(text).font(.system(.body, design: .serif)).textSelection(.enabled) }
             ForEach(photo.sources.filter { $0.role == "essay" }) { source in
                 ReportPhotoView(source: source)
                 ForEach(Array(photo.corrections.filter {
@@ -141,7 +155,10 @@ struct GradingReportView: View {
     }
 
     private var rewritesView: some View {
-        RewriteReadingView(rewrites: document.report.rewrites, exemplar: document.report.modelEssay)
+        Group {
+            if let translation = document.report.translationReview { TranslationRevisionView(review: translation) }
+            else { RewriteReadingView(rewrites: document.report.rewrites, exemplar: document.report.modelEssay) }
+        }
     }
 
     private var reviewView: some View {

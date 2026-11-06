@@ -24,7 +24,7 @@ struct ContentView: View {
                         HomeView()
                     }.tabItem { Label("首页", systemImage: "square.grid.2x2") }.tag(MainTab.home)
                     NavigationStack {
-                        PracticeView(onPhotos: { presented = .photos(nil) }, onCreate: create, onOpen: open, onOpenReport: { presented = .report($0) })
+                        PracticeView(onPhotos: openPhotos, onCreate: create, onOpen: open, onOpenReport: { presented = .report($0) })
                     }.tabItem { Label("练习", systemImage: "square.and.pencil") }.tag(MainTab.practice)
                     NavigationStack {
                         NotebookView()
@@ -36,7 +36,7 @@ struct ContentView: View {
                     switch screen {
                     case .editor(let document):
                         if let repository = model.repository {
-                            EssayEditorView(document: document, repository: repository, didSave: model.refresh, onPhotos: { presented = .photos(nil) })
+                            EssayEditorView(document: document, repository: repository, didSave: model.refresh, onPhotos: { openPhotos(document.task.part) })
                         }
                     case .photos(let draft): PhotoPracticeView(app: model, draft: draft)
                     case .report(let document):
@@ -68,13 +68,17 @@ struct ContentView: View {
         } message: { Text(model.errorMessage ?? "") }
     }
 
+    private func openPhotos(_ part: WritingPart) {
+        let draft = DraftDocument(id: UUID(), task: .empty(part: part), body: "", source: "photos", transcriptionConfirmed: false, createdAt: .now, updatedAt: .now)
+        presented = .photos(draft)
+    }
     private func create(_ part: WritingPart, _ task: WritingTaskDocument? = nil) {
         if let task, !(task.sourcePages ?? []).isEmpty && task.prompt.isEmpty {
             let draft = DraftDocument(id: UUID(), task: task, body: "", source: "photos", transcriptionConfirmed: false, createdAt: .now, updatedAt: .now)
             presented = .photos(draft)
-        } else if let draft = model.createDraft(part: part, task: task) { presented = .editor(draft) }
+        } else if let draft = model.createDraft(part: part, task: task) { presented = .photos(draft) }
     }
-    private func open(_ draft: DraftDocument) { presented = draft.source == "photos" ? .photos(draft) : .editor(draft) }
+    private func open(_ draft: DraftDocument) { presented = ["ocr", "ai_photo"].contains(draft.source) ? .editor(draft) : .photos(draft) }
 }
 
 enum MainTab { case home, practice, records, profile }

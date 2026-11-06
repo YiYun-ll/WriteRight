@@ -6,6 +6,7 @@ import UIKit
 struct PhotoPracticeView: View {
     @EnvironmentObject private var app: AppModel
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.dynamicTypeSize) private var typeSize
     @StateObject private var model: PhotoPracticeModel
     @State private var taskPicks: [PhotosPickerItem] = []
@@ -14,7 +15,8 @@ struct PhotoPracticeView: View {
     @State private var login = false
     @State private var report: GradingReportDocument?
     @State private var zoom: ScanPageDocument?
-    @FocusState private var editing: Bool
+    private enum InputField: Hashable { case title, task, essay, reference }
+    @FocusState private var focusedField: InputField?
 
     init(app: AppModel, draft: DraftDocument? = nil) { _model = StateObject(wrappedValue: PhotoPracticeModel(app: app, draft: draft)) }
 
@@ -32,11 +34,11 @@ struct PhotoPracticeView: View {
             }
             .scrollDismissesKeyboard(.interactively)
             .background(WriteRightTheme.background).foregroundStyle(WriteRightTheme.ink)
-            .navigationTitle(model.jobID == nil ? "照片批改" : currentJob?.status == .completed ? "这一篇的回信" : "等这一页被读懂")
+            .navigationTitle(model.jobID == nil ? model.part.title : currentJob?.status == .completed ? "这一篇的回信" : "等这一页被读懂")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button(model.jobID == nil ? "保存并返回" : "先去做别的") {
-                    if model.jobID == nil && (!model.taskPages.isEmpty || !model.essayPages.isEmpty) && model.saveDraft() == nil { return }
+                    if model.jobID == nil && model.hasContent && model.saveDraft() == nil { return }
                     model.cancel(); dismiss()
                 }.disabled(model.isWorking) }
                 #if DEBUG
@@ -44,18 +46,19 @@ struct PhotoPracticeView: View {
                     if ProcessInfo.processInfo.arguments.contains("-ui-test-photos") && model.jobID == nil {
                         Button("载入样例") {
                             model.begin("正在导入样例照片") {
-                                if let data = try? ScanSampleImage.jpeg(text: "I has a book."), let image = UIImage(data: data) {
+                                if let data = try? ScanSampleImage.jpeg(text: model.part == .translation ? UITestTranslationFixture.english : "I has a book."), let image = UIImage(data: data) {
                                     if model.taskPages.isEmpty { await model.add([image], role: .task) }
-                                    await model.add([image], role: .essay)
+                                    if model.part == .translation, let answerData = try? ScanSampleImage.jpeg(text: UITestTranslationFixture.student), let answerImage = UIImage(data: answerData) { await model.add([answerImage], role: .essay) }
+                                    else { await model.add([image], role: .essay) }
                                 }
                             }
                         }.disabled(model.isWorking).accessibilityIdentifier("photo-load-sample")
                     }
                 }
                 #endif
-                ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("收起键盘") { editing = false } }
+                ToolbarItemGroup(placement: .keyboard) { Spacer(); Button("收起键盘") { focusedField = nil } }
             }
-            .safeAreaInset(edge: .bottom) { actionBar }
+            .safeAreaInset(edge: .bottom) { if focusedField == nil { actionBar } }
             .sheet(isPresented: $login) { NavigationStack { LoginView().toolbar { Button("返回") { login = false } } } }
             .onChange(of: app.account?.userID) { old, value in
                 if old != nil && old != value { model.cancel(); dismiss() }
@@ -71,6 +74,7 @@ struct PhotoPracticeView: View {
             .onChange(of: taskPicks) { _, values in importPhotos(values, role: .task) }
             .onChange(of: essayPicks) { _, values in importPhotos(values, role: .essay) }
 
+            .onChange(of: scenePhase) { _, phase in if phase != .active { _ = model.saveDraft() } }
             .onDisappear { model.cancel() }
             .interactiveDismissDisabled(model.isWorking)
         }
@@ -79,34 +83,69 @@ struct PhotoPracticeView: View {
     private var upload: some View {
         VStack(alignment: .leading, spacing: 24) {
             VStack(alignment: .leading, spacing: 10) {
-                Text("写过的每一页，都值得认真读。")
+                Text(model.part == .translation ? "读懂原文，也读懂每一句译文。" : "写过的每一页，都值得认真读。")
                     .font(.system(.title2, design: .serif))
-                Text("把题目和写好的作文分开放好，直接看图批改。")
+                Text("题目与作答可以分别选择文字或照片，切换时保留已填内容。")
                     .font(.subheadline).foregroundStyle(WriteRightTheme.secondary)
             }
             partPicker.disabled(model.isWorking).accessibilityIdentifier("photo-part")
-            photoSection(.task, title: "题目与图表", detail: "包含完整指令、图表和单位；没有题图也可以继续。")
-            photoSection(.essay, title: "作文原稿", detail: "每页拍清楚，按阅读顺序选择，最多 4 张。")
-            Text(model.taskPages.isEmpty ? "未附题图时只做语言反馈，不估总分。" : "题目和作文会一起交给 AI。看不清的内容会明确指出，不把识图疑点当成你的错误。")
+            TextField("练习名称（选填）", text: $model.title).focused($focusedField, equals: .title).font(.headline).accessibilityIdentifier("task-title")
+            inputSection(.task, title: model.part == .translation ? "英文原文" : "题目与图表", detail: model.part == .translation ? "包含完整原文及上下文，按阅读顺序放入。" : "包含完整指令、图表和单位；没有题图也可以继续。")
+            inputSection(.essay, title: model.part == .translation ? "我的译文" : "作文原稿", detail: "每页拍清楚，按阅读顺序选择，最多 4 张。")
+            if model.part == .translation {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("参考译文（选填）").font(.headline)
+                    TextField("有则提供，仅供对照", text: $model.referenceTranslation, axis: .vertical)
+                        .lineLimit(3...8).focused($focusedField, equals: .reference).accessibilityIdentifier("photo-translation-reference")
+                }.padding(22).background(WriteRightTheme.surface, in: RoundedRectangle(cornerRadius: 16))
+            }
+            Text(!model.hasTask ? "未提供完整题目时只做语言反馈，不估总分。" : "题目和作文会一起交给 AI。看不清的内容会明确指出，不把识图疑点当成你的错误。")
                 .font(.footnote).foregroundStyle(WriteRightTheme.secondary)
         }
     }
 
     @ViewBuilder private var partPicker: some View {
         if typeSize.isAccessibilitySize {
-            Picker("作文类型", selection: $model.part) {
+            Picker("练习题型", selection: $model.part) {
                 ForEach(WritingPart.allCases) { Text("\($0.title) · \($0.maximumScore)分").tag($0) }
             }.pickerStyle(.menu)
         } else {
-            Picker("作文类型", selection: $model.part) {
+            Picker("练习题型", selection: $model.part) {
                 ForEach(WritingPart.allCases) { Text("\($0.title) · \($0.maximumScore)分").tag($0) }
             }.pickerStyle(.segmented)
         }
     }
 
+    private func inputSection(_ role: PhotoPracticeModel.Role, title: String, detail: String) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(title).font(.system(.title3, design: .serif))
+            Picker(title + "输入方式", selection: role == .task ? $model.taskMode : $model.answerMode) {
+                ForEach(PracticeInputMode.allCases) { Text($0.title).tag($0) }
+            }.pickerStyle(.segmented).accessibilityIdentifier("practice-input-" + role.rawValue)
+                .disabled(model.isWorking)
+            if model.mode(role) == .photos { photoSection(role, title: title, detail: detail) }
+            else {
+                if role == .essay {
+                    TextEditor(text: $model.essayText).frame(minHeight: 240).scrollContentBackground(.hidden)
+                        .font(.system(.body, design: .serif)).lineSpacing(6).autocorrectionDisabled().focused($focusedField, equals: .essay)
+                        .accessibilityLabel(model.part == .translation ? "我的译文" : "作文正文").accessibilityIdentifier("essay-body")
+                } else {
+                    TextField("输入完整题目或英文原文", text: $model.taskText, axis: .vertical)
+                        .lineLimit(4...12).autocorrectionDisabled().font(.system(.body, design: .serif)).lineSpacing(6).focused($focusedField, equals: .task)
+                        .accessibilityIdentifier("task-prompt")
+                }
+                if role == .essay {
+                    Text(model.part == .translation ? "\(model.essayText.filter { !$0.isWhitespace }.count) 字" : "参考词数 \(WordCounter.count(model.essayText))")
+                        .font(.caption.monospacedDigit()).foregroundStyle(WriteRightTheme.secondary)
+                }
+            }
+        }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
+            .background(WriteRightTheme.surface, in: RoundedRectangle(cornerRadius: 18))
+    }
+
     private func photoSection(_ role: PhotoPracticeModel.Role, title: String, detail: String) -> some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack { Text(title).font(.system(.title3, design: .serif)); Spacer(); Text("\(model.pages(role).count)/4").font(.caption.monospacedDigit()) }
+            Text("已选 \(model.pages(role).count) / 4 页").font(.caption.monospacedDigit()).foregroundStyle(WriteRightTheme.secondary)
             Text(detail).font(.subheadline).foregroundStyle(WriteRightTheme.secondary).fixedSize(horizontal: false, vertical: true)
             ForEach(Array(model.pages(role).enumerated()), id: \.element.id) { index, page in
                 HStack(spacing: 14) {
@@ -130,8 +169,7 @@ struct PhotoPracticeView: View {
                 VStack(alignment: .leading, spacing: 12) { album(role); camera(role) }
             }
         }
-        .padding(22).frame(maxWidth: .infinity, alignment: .leading)
-        .background(WriteRightTheme.surface, in: RoundedRectangle(cornerRadius: 16))
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
     private func album(_ role: PhotoPracticeModel.Role) -> some View {
         PhotosPicker(selection: role == .task ? $taskPicks : $essayPicks, maxSelectionCount: max(1, 4 - model.pages(role).count), selectionBehavior: .ordered, matching: .images) {
@@ -182,12 +220,18 @@ struct PhotoPracticeView: View {
             if let result = app.gradingReports.first(where: { $0.jobID == model.jobID }) {
                 Button("看看这次的建议") { report = result }.buttonStyle(MainActionStyle()).accessibilityIdentifier("photo-open-report")
             }
-            if !model.taskPages.isEmpty {
+            if model.jobID != nil {
+                Button(currentJob?.status == .completed ? "同题再练" : "修改后重新提交") { model.startAnother(keepAnswer: currentJob?.status != .completed) }
+                    .frame(minHeight: 44).accessibilityIdentifier("practice-new-attempt")
+            }
+            if model.taskMode == .text && !model.taskText.isEmpty { Text(model.taskText).font(.system(.body, design: .serif)).textSelection(.enabled) }
+            if model.taskMode == .photos && !model.taskPages.isEmpty {
                 Text("这次的题目").font(.system(.title3, design: .serif))
                 ForEach(model.taskPages) { page in thumbnail(page) }
             }
             Text("你的原稿").font(.system(.title3, design: .serif))
-            ForEach(model.essayPages) { page in thumbnail(page) }
+            if model.answerMode == .text { Text(model.essayText).font(.system(.body, design: .serif)).textSelection(.enabled) }
+            else { ForEach(model.essayPages) { page in thumbnail(page) } }
         }
     }
     private func thumbnail(_ page: ScanPageDocument) -> some View {
@@ -208,9 +252,9 @@ struct PhotoPracticeView: View {
                     if app.canAuthenticate { Button("登录后开始批改") { login = true }.buttonStyle(MainActionStyle()).accessibilityIdentifier("photo-login") }
                     else { Text("云端连接暂不可用，请稍后再试。照片可保存在草稿中。").font(.footnote) }
                 } else {
-                    Text("点击后，照片将保存在你的云端私有空间，并发送给 DeepSeek 用于批改与报告回看。")
+                    Text("提交后，文字和照片会发送给 DeepSeek 用于批改；照片保存在你的云端私有空间供报告回看。")
                         .font(.footnote).foregroundStyle(WriteRightTheme.secondary).fixedSize(horizontal: false, vertical: true)
-                    Button("开始看图批改") { model.begin("正在整理照片") { await model.submit() } }
+                    Button("提交批改") { model.begin("正在整理照片") { await model.submit() } }
                         .buttonStyle(MainActionStyle()).disabled(!model.canSubmit).accessibilityIdentifier("photo-submit")
                 }
             }

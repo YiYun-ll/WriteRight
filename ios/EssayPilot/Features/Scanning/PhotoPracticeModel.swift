@@ -4,6 +4,12 @@ import UIKit
 
 @MainActor final class PhotoPracticeModel: ObservableObject {
     enum Role: String, Identifiable { case task, essay; var id: String { rawValue } }
+    @Published var title: String
+    @Published var taskText: String
+    @Published var essayText: String
+    @Published var taskMode: PracticeInputMode
+    @Published var answerMode: PracticeInputMode
+    @Published var referenceTranslation: String
     @Published var part: WritingPart
     @Published private(set) var taskPages: [ScanPageDocument]
     @Published private(set) var essayPages: [ScanPageDocument]
@@ -14,6 +20,7 @@ import UIKit
     @Published private(set) var jobID: UUID?
     private let app: AppModel
     private var store: ScanImageStore?
+    private var subscriptions = Set<AnyCancellable>()
     private var operation: Task<Void, Never>?
     private var document: DraftDocument
     private var retainedIDs: Set<UUID> = []
@@ -23,13 +30,31 @@ import UIKit
     init(app: AppModel, draft: DraftDocument? = nil) {
         self.app = app; store = try? app.scanImageStore(); initialOwner = app.account?.userID
         document = draft ?? DraftDocument(id: UUID(), task: .empty(part: .a), body: "", source: "photos", transcriptionConfirmed: false, createdAt: .now, updatedAt: .now)
+        title = document.task.title; taskText = document.task.prompt; essayText = document.body
+        taskMode = document.resolvedTaskMode; answerMode = document.resolvedAnswerMode
+        referenceTranslation = document.task.referenceTranslation ?? ""
         part = document.task.part; taskPages = document.task.sourcePages ?? []; essayPages = document.pages ?? []
         retainedIDs = Set((taskPages + essayPages).map(\.id)); initialTaskPages = taskPages.map(\.id)
-        if let submission = app.submissions.filter({ $0.draftID == document.id }).max(by: { $0.submittedAt < $1.submittedAt }) {
+        Publishers.CombineLatest4($part, $referenceTranslation, $taskMode, $answerMode).dropFirst()
+            .debounce(for: .milliseconds(450), scheduler: RunLoop.main)
+            .sink { [weak self] _ in _ = self?.saveDraft() }.store(in: &subscriptions)
+        Publishers.CombineLatest3($title, $taskText, $essayText).dropFirst()
+            .debounce(for: .milliseconds(450), scheduler: RunLoop.main)
+            .sink { [weak self] _ in _ = self?.saveDraft() }.store(in: &subscriptions)
+        if let submission = app.submissions.filter({ document.matches($0) }).max(by: { $0.submittedAt < $1.submittedAt }) {
             jobID = app.gradingJobs.first { $0.submissionID == submission.id }?.id
         }
     }
-    var canSubmit: Bool { !essayPages.isEmpty && !isWorking }
+    var hasAnswer: Bool { answerMode == .photos ? !essayPages.isEmpty : !essayText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    var hasTask: Bool { taskMode == .photos ? !taskPages.isEmpty : !taskText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+    var hasContent: Bool { !taskPages.isEmpty || !essayPages.isEmpty || !taskText.isEmpty || !essayText.isEmpty || !title.isEmpty }
+    var canSubmit: Bool { hasAnswer && !isWorking }
+    func mode(_ role: Role) -> PracticeInputMode { role == .task ? taskMode : answerMode }
+    func startAnother(keepAnswer: Bool) {
+        document.id = UUID(); document.createdAt = .now; document.updatedAt = .now; jobID = nil
+        if !keepAnswer { essayText = ""; essayPages = [] }
+        _ = saveDraft()
+    }
     func image(_ page: ScanPageDocument) -> UIImage? {
         guard let url = store?.url(page.relativePath) else { return nil }
         return UIImage(contentsOfFile: url.path)
@@ -63,7 +88,7 @@ import UIKit
         do {
             if !retainedIDs.contains(page.id) { try store?.remove(page.relativePath) }
             setPages(pages(role).filter { $0.id != page.id }, role: role)
-            if !taskPages.isEmpty || !essayPages.isEmpty { _ = saveDraft() }
+            _ = saveDraft()
         } catch { self.error = "照片暂时未能移除，请重试。" }
     }
     func move(_ page: ScanPageDocument, role: Role, offset: Int) {
@@ -88,7 +113,7 @@ import UIKit
     }
     @discardableResult func saveDraft() -> DraftDocument? {
         if jobID != nil { return app.drafts.first { $0.id == document.id } ?? document }
-        guard !taskPages.isEmpty || !essayPages.isEmpty else { return nil }
+        guard hasContent || app.drafts.contains(where: { $0.id == document.id }) else { return nil }
         guard initialOwner == nil || initialOwner == app.account?.userID else { return nil }
         var copied: [String] = []
         var destination: ScanImageStore?
@@ -103,8 +128,16 @@ import UIKit
                 }
             }
             if taskPages.map(\.id) != initialTaskPages { document.task.id = UUID(); document.task.photoFingerprint = nil }
-            document.task.part = part; document.task.sourcePages = taskPages; document.task.prompt = ""; document.task.requirements = []; document.task.confirmedAt = nil
-            document.pages = essayPages; document.body = ""; document.source = "photos"; document.transcriptionConfirmed = false; document.updatedAt = .now
+            if document.task.prompt != taskText || document.task.part != part || document.taskInputMode != taskMode {
+                document.task.revision += 1; document.task.confirmedAt = nil
+            }
+            document.task.title = title
+            document.task.referenceTranslation = part == .translation && !referenceTranslation.isEmpty ? referenceTranslation : nil
+            document.task.part = part; document.task.sourcePages = taskPages; document.task.prompt = taskText
+            if taskMode == .text && !taskText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { document.task.confirmedAt = document.task.confirmedAt ?? .now }
+            else { document.task.confirmedAt = nil }
+            document.taskInputMode = taskMode; document.answerInputMode = answerMode
+            document.pages = essayPages; document.body = essayText; document.source = "practice"; document.transcriptionConfirmed = answerMode == .text; document.updatedAt = .now
             try repository.save(document)
             if movesStore {
                 for page in taskPages + essayPages where !retainedIDs.contains(page.id) { try? store.remove(page.relativePath) }
@@ -118,9 +151,11 @@ import UIKit
         }
     }
     func submit() async {
-        guard !essayPages.isEmpty, let draft = saveDraft() else { return }
+        guard hasAnswer, let draft = saveDraft()?.activePracticeDraft else { return }
         isSubmitting = true; defer { isSubmitting = false }
-        jobID = await app.submitPhotoGrading(draft)?.id
+        if (draft.pages ?? []).isEmpty && (draft.task.sourcePages ?? []).isEmpty {
+            jobID = await app.submitGrading(draft)?.id
+        } else { jobID = await app.submitPhotoGrading(draft)?.id }
         if jobID == nil {
             // Shown here; leaving it on the app would pop the same alert again after this page closes.
             error = app.errorMessage ?? "这次未能提交，照片已保存，可以稍后继续。"; app.errorMessage = nil

@@ -79,9 +79,41 @@ private final class MemoryWidgetStore: WidgetSecondaryStore {
         try WidgetSnapshotStore.writeBackground(photo)
         WidgetSnapshotStore.eraseGroupCopies()
         XCTAssertEqual(WidgetSnapshotStore.read().tasks.map(\.title), ["Visible task"])
-        XCTAssertEqual(WidgetSnapshotStore.readBackground(), photo)
+        XCTAssertNotNil(WidgetSnapshotStore.readBackground())
+        XCTAssertLessThanOrEqual(try XCTUnwrap(WidgetSnapshotStore.readBackground()).count, WidgetPhoto.maximumEncodedBytes)
         let decision = WidgetDisplay.resolve(theme: .midnight, content: .countdown, snapshot: WidgetSnapshotStore.read(), photo: WidgetSnapshotStore.readBackground())
         XCTAssertTrue(decision.usesPhoto)
         XCTAssertEqual(decision.records?.map(\.title), ["Visible task"])
+    }
+}
+
+@MainActor final class WidgetPhotoReliabilityTests: XCTestCase {
+    func testHugePhotoHasBoundedBitmapAndCorruptInputFailsSafely() throws {
+        let format = UIGraphicsImageRendererFormat(); format.scale = 1
+        let large = UIGraphicsImageRenderer(size: CGSize(width: 6000, height: 4000), format: format).jpegData(withCompressionQuality: 0.9) { context in
+            UIColor.systemOrange.setFill(); context.fill(CGRect(x: 0, y: 0, width: 6000, height: 4000))
+        }
+        let photo = try WidgetPhoto.normalized(large)
+        let image = try XCTUnwrap(WidgetPhoto.image(photo)?.cgImage)
+        XCTAssertLessThanOrEqual(max(image.width, image.height), 600)
+        XCTAssertLessThanOrEqual(photo.count, 180_000)
+        XCTAssertNil(WidgetPhoto.image(Data("broken".utf8)))
+        XCTAssertThrowsError(try WidgetPhoto.normalized(Data("broken".utf8)))
+    }
+    func testCorruptPrimaryFallsBackAndRemovalDoesNotReviveStaleImage() throws {
+        let memory = MemoryWidgetStore(); let previous = WidgetSnapshotStore.secondary
+        WidgetSnapshotStore.secondary = memory
+        defer { WidgetSnapshotStore.resetSharedCopies(); WidgetSnapshotStore.secondary = previous }
+        let photo = UIGraphicsImageRenderer(size: CGSize(width: 100, height: 100)).jpegData(withCompressionQuality: 0.8) { context in
+            UIColor.orange.setFill(); context.fill(CGRect(x: 0, y: 0, width: 100, height: 100))
+        }
+        try WidgetSnapshotStore.writeBackground(photo)
+        if let url = WidgetSnapshotStore.backgroundURL { try Data("corrupt".utf8).write(to: url) }
+        XCTAssertNotNil(WidgetSnapshotStore.readBackgroundImage())
+        try WidgetSnapshotStore.removeBackground()
+        XCTAssertNil(WidgetSnapshotStore.readBackground())
+        // A stale legacy copy cannot override a newer removal marker.
+        if let url = WidgetSnapshotStore.backgroundURL { try photo.write(to: url) }
+        XCTAssertNil(WidgetSnapshotStore.readBackgroundImage())
     }
 }

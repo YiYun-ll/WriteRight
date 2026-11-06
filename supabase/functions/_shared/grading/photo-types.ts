@@ -5,7 +5,12 @@ export interface PhotoSource {
   path: string;
   checksum: string;
 }
+export interface PhotoTextInputs {
+  task: string;
+  essay: string;
+}
 export interface PhotoReview {
+  text_sources?: PhotoTextInputs;
   sources: PhotoSource[];
   task_fingerprint: string | null;
   task_status: "readable" | "missing" | "unclear";
@@ -30,9 +35,11 @@ export interface PhotoContext {
   source: "photo_grading_v2";
   part: Part;
   originalText: "";
-  wordCount: 0;
+  wordCount: number;
+  textInputs?: PhotoTextInputs;
   contentHash: string;
   task: {
+    referenceTranslation?: string;
     prompt: "";
     revision: 1;
     confirmed: boolean;

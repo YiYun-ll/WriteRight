@@ -1,4 +1,4 @@
-export type Part = "A" | "B";
+export type Part = "A" | "B" | "T";
 export type GradingMode = "full" | "language_only";
 export interface TaskPoint {
   id: string;
@@ -9,6 +9,7 @@ export interface GradingInput {
   originalText: string;
   task: {
     prompt: string;
+    referenceTranslation?: string;
     revision: number;
     confirmed: boolean;
     requirements: TaskPoint[];
@@ -39,7 +40,18 @@ export interface GradingContext extends GradingInput {
   modelID: string;
 }
 export interface GradingReport {
-  schema_version: "1.0.0" | "1.1.0" | "2.0.0" | "2.1.0" | "2.2.0" | "1.2.0" | "1.3.0" | "2.3.0";
+  schema_version:
+    | "1.0.0"
+    | "1.1.0"
+    | "2.0.0"
+    | "2.1.0"
+    | "2.2.0"
+    | "1.2.0"
+    | "1.3.0"
+    | "2.3.0"
+    | "3.0.0"
+    | "3.1.0"
+    | "2.4.0";
   part: Part;
   grading_mode: GradingMode;
   score: {
@@ -77,6 +89,7 @@ export interface GradingReport {
     optional_upgrade: string | null;
   }[];
   rewrites: { minimal: string; enhanced: string; study?: RewriteStudy };
+  translation_review?: import("./translation.ts").TranslationAssessment;
   sentence_reviews?: SentenceReviews;
   advanced_advice?: AdvancedAdvice[];
   model_essay?: ModelEssay | null;

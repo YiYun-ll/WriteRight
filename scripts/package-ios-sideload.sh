@@ -38,7 +38,7 @@ ditto --norsrc --noextattr "$task_app" "$task_stage/Payload/EssayPilot.app"
 find "$task_stage" -name embedded.mobileprovision -type f -delete
 find "$task_stage" -type d -name _CodeSignature -prune -exec rm -rf {} +
 task_app_entitlements="$task_root/ios/Config/Shared.entitlements"
-task_widget_entitlements="$task_root/ios/Config/Widget.entitlements"
+task_widget_entitlements="$task_root/ios/Config/SideloadWidget.entitlements"
 task_payload_app="$task_stage/Payload/EssayPilot.app"
 task_widget="$task_payload_app/PlugIns/WriteRightWidgets.appex"
 cp "$task_app_entitlements" "$task_payload_app/archived-expanded-entitlements.xcent"
@@ -57,8 +57,11 @@ task_check="$(mktemp -d)"
 unzip -q "$task_ipa" -d "$task_check"
 task_signed="$task_check/Payload/EssayPilot.app"
 task_group="group.com.yiyun.essaypilot.shared"
+task_keychain='$(AppIdentifierPrefix)com.yiyun.essaypilot.dev'
 for task_target in "$task_signed" "$task_signed/PlugIns/WriteRightWidgets.appex"; do
-  /usr/bin/codesign -d --entitlements :- "$task_target" 2>/dev/null | /usr/bin/grep -q "$task_group"
+  task_entitlements="$(/usr/bin/codesign -d --entitlements :- "$task_target" 2>/dev/null)"
+  /usr/bin/grep -F -q "$task_group" <<<"$task_entitlements"
+  /usr/bin/grep -F -q "$task_keychain" <<<"$task_entitlements"
 done
 if find "$task_signed" -name embedded.mobileprovision -print | grep -q .; then
   printf 'Sideload IPA must not contain a provisioning profile.\n' >&2

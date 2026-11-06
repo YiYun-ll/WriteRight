@@ -3,11 +3,12 @@ import Foundation
 enum WritingPart: String, Codable, CaseIterable, Identifiable {
     case a = "A"
     case b = "B"
+    case translation = "T"
 
     var id: String { rawValue }
-    var title: String { self == .a ? "小作文" : "大作文" }
+    var title: String { self == .a ? "小作文" : self == .b ? "大作文" : "翻译" }
     var maximumScore: Int { self == .a ? 10 : 15 }
-    var suggestedWords: Int { self == .a ? 100 : 150 }
+    var suggestedWords: Int { self == .a ? 100 : self == .b ? 150 : 0 }
 }
 
 struct TaskRequirement: Codable, Identifiable, Equatable {
@@ -27,6 +28,7 @@ struct WritingTaskDocument: Codable, Identifiable, Equatable {
     var sourcePages: [ScanPageDocument]? = nil
     var uncertainFields: [String]? = nil
     var photoFingerprint: String? = nil
+    var referenceTranslation: String? = nil
 
     static func empty(part: WritingPart) -> Self {
         .init(id: UUID(), part: part, title: "", prompt: "", requirements: [], revision: 1)
@@ -50,6 +52,8 @@ struct DraftDocument: Codable, Identifiable, Equatable {
     var updatedAt: Date
     var pages: [ScanPageDocument]? = nil
     var conflictOf: UUID? = nil
+    var taskInputMode: PracticeInputMode? = nil
+    var answerInputMode: PracticeInputMode? = nil
 
     var wordCount: Int { WordCounter.count(body) }
     var isEmpty: Bool {
@@ -77,6 +81,7 @@ struct SubmissionDocument: Codable, Identifiable, Equatable {
     let sentences: [SentenceSpan]
     let submittedAt: Date
     var essayPages: [ScanPageDocument]? = nil
+    var textInputs: PracticeTextInputs? = nil
 }
 
 @MainActor

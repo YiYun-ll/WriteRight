@@ -68,6 +68,7 @@ struct GradingReportPayload: Codable, Equatable {
     let corrections: [ReportCorrection]
     let rewrites: ReportRewrites
     let review: ReportReview
+    var translationReview: TranslationReview? = nil
     var photoReview: PhotoReviewPayload? = nil
     var sentenceReviews: SentenceReviews? = nil
     var advancedAdvice: [AdvancedAdvice]? = nil
@@ -88,6 +89,7 @@ struct GradingReportPayload: Codable, Equatable {
         case corrections, rewrites, review
         case sentenceReviews = "sentence_reviews"
         case advancedAdvice = "advanced_advice", modelEssay = "model_essay"
+        case translationReview = "translation_review"
         case photoReview = "photo_review"
     }
 }
@@ -123,7 +125,9 @@ struct PhotoReviewPayload: Codable, Equatable {
     let uncertainties: [Uncertainty]
     let corrections: [Correction]
     let wordCountEstimated: Bool
+    var textSources: PracticeTextInputs? = nil
     enum CodingKeys: String, CodingKey {
+        case textSources = "text_sources"
         case sources, strengths, uncertainties, corrections
         case taskFingerprint = "task_fingerprint", taskStatus = "task_status", wordCountEstimated = "word_count_estimated"
     }

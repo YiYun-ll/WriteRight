@@ -1,0 +1,485 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MixedTranslationReportV1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "part",
+    "grading_mode",
+    "score",
+    "word_count",
+    "rubric_version",
+    "prompt_version",
+    "model_id",
+    "overall_comment",
+    "dimensions",
+    "task_checks",
+    "corrections",
+    "rewrites",
+    "review",
+    "translation_review"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "3.1.0"
+    },
+    "part": {
+      "const": "T"
+    },
+    "grading_mode": {
+      "enum": [
+        "full",
+        "language_only"
+      ]
+    },
+    "score": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "value",
+        "max",
+        "band",
+        "range",
+        "confidence"
+      ],
+      "properties": {
+        "value": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 15,
+          "multipleOf": 0.25
+        },
+        "max": {
+          "const": 15
+        },
+        "band": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "range": {
+          "type": "null"
+        },
+        "confidence": {
+          "enum": [
+            "high",
+            "medium",
+            "low"
+          ]
+        }
+      }
+    },
+    "word_count": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "rubric_version": {
+      "type": "string"
+    },
+    "prompt_version": {
+      "type": "string"
+    },
+    "model_id": {
+      "type": "string"
+    },
+    "overall_comment": {
+      "type": "string"
+    },
+    "dimensions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "name",
+          "level",
+          "explanation",
+          "evidence_sentence_ids"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string"
+          },
+          "explanation": {
+            "type": "string"
+          },
+          "evidence_sentence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "task_checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "point_id",
+          "status",
+          "reason",
+          "evidence_sentence_ids"
+        ],
+        "properties": {
+          "point_id": {
+            "type": "string"
+          },
+          "status": {
+            "enum": [
+              "passed",
+              "partial",
+              "failed",
+              "uncertain"
+            ]
+          },
+          "reason": {
+            "type": "string"
+          },
+          "evidence_sentence_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "corrections": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "sentence_id",
+          "original",
+          "minimal_corrected",
+          "category",
+          "severity",
+          "impact",
+          "reason_zh",
+          "optional_upgrade"
+        ],
+        "properties": {
+          "sentence_id": {
+            "type": "string"
+          },
+          "original": {
+            "type": "string"
+          },
+          "minimal_corrected": {
+            "type": "string"
+          },
+          "category": {
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "required",
+              "optional"
+            ]
+          },
+          "impact": {
+            "enum": [
+              "high",
+              "medium",
+              "low"
+            ]
+          },
+          "reason_zh": {
+            "type": "string"
+          },
+          "optional_upgrade": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "rewrites": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "minimal",
+        "enhanced"
+      ],
+      "properties": {
+        "minimal": {
+          "type": "string"
+        },
+        "enhanced": {
+          "type": "string"
+        },
+        "study": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "minimal",
+            "enhanced"
+          ],
+          "properties": {
+            "minimal": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "translation_zh",
+                "highlights"
+              ],
+              "properties": {
+                "translation_zh": {
+                  "type": "string",
+                  "maxLength": 15000
+                },
+                "highlights": {
+                  "type": "array",
+                  "maxItems": 3,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "text",
+                      "reason_zh"
+                    ],
+                    "properties": {
+                      "text": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      "reason_zh": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "enhanced": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "translation_zh",
+                "highlights"
+              ],
+              "properties": {
+                "translation_zh": {
+                  "type": "string",
+                  "maxLength": 15000
+                },
+                "highlights": {
+                  "type": "array",
+                  "maxItems": 3,
+                  "items": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": [
+                      "text",
+                      "reason_zh"
+                    ],
+                    "properties": {
+                      "text": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      },
+                      "reason_zh": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 1000
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "top_issues",
+        "expressions",
+        "practice_advice"
+      ],
+      "properties": {
+        "top_issues": {
+          "type": "array",
+          "maxItems": 3,
+          "items": {
+            "type": "string"
+          }
+        },
+        "expressions": {
+          "type": "array",
+          "maxItems": 5,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "expression",
+              "meaning",
+              "usage"
+            ],
+            "properties": {
+              "expression": {
+                "type": "string"
+              },
+              "meaning": {
+                "type": "string"
+              },
+              "usage": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "practice_advice": {
+          "type": "string"
+        }
+      }
+    },
+    "translation_review": {
+      "$ref": "translation-assessment.schema.json"
+    },
+    "photo_review": {
+      "type": "object",
+      "required": [
+        "sources",
+        "task_fingerprint",
+        "task_status",
+        "strengths",
+        "uncertainties",
+        "corrections",
+        "word_count_estimated",
+        "text_sources"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "role",
+              "page",
+              "path",
+              "checksum"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "role": {
+                "enum": [
+                  "task",
+                  "essay"
+                ]
+              },
+              "page": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 4
+              },
+              "path": {
+                "type": "string"
+              },
+              "checksum": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "task_fingerprint": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "task_status": {
+          "enum": [
+            "readable",
+            "missing",
+            "unclear"
+          ]
+        },
+        "strengths": {
+          "type": "array",
+          "maxItems": 0
+        },
+        "uncertainties": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "role",
+              "page",
+              "message",
+              "blocks_scoring"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "role": {
+                "enum": [
+                  "task",
+                  "essay"
+                ]
+              },
+              "page": {
+                "type": [
+                  "integer",
+                  "null"
+                ]
+              },
+              "message": {
+                "type": "string"
+              },
+              "blocks_scoring": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "corrections": {
+          "type": "array",
+          "maxItems": 0
+        },
+        "word_count_estimated": {
+          "const": false
+        },
+        "text_sources": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "task",
+            "essay"
+          ],
+          "properties": {
+            "task": {
+              "type": "string",
+              "maxLength": 20000
+            },
+            "essay": {
+              "type": "string",
+              "maxLength": 30000
+            }
+          }
+        }
+      }
+    }
+  }
+}

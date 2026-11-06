@@ -6,12 +6,13 @@ final class AccountFlowTests: XCTestCase {
         app.launchArguments = ["-ui-test-store", UUID().uuidString, "-appearance", "light"]
         app.launch()
         app.tabBars.buttons["练习"].tap()
-        XCTAssertTrue(app.buttons["new-part-A"].waitForExistence(timeout: 10))
-        app.buttons["new-part-A"].tap()
+        XCTAssertTrue(app.buttons["practice-part-A"].waitForExistence(timeout: 10))
+        app.buttons["practice-part-A"].tap()
+        app.buttons["start-A"].tap()
         let title = app.textFields["task-title"]
         XCTAssertTrue(title.waitForExistence(timeout: 5))
         title.tap(); title.typeText("本机草稿")
-        app.buttons["finish-editing"].tap()
+        app.buttons["保存并返回"].tap()
 
         app.tabBars.buttons["我的"].tap()
         app.buttons["login-link"].tap()

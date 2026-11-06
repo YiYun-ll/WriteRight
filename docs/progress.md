@@ -584,3 +584,99 @@
 - 只要保存了照片，小组件就改用这张照片，不再停在午夜；移除后恢复小组件里选的纯色。开启记录后，倒计时或待办显示待办标题，灵感链接显示链接。照片不再放进时间线条目。
 - `ProfileWidgetTests` 4 项通过，含去掉共享目录副本后仍能读到照片和记录，午夜主题也会改用照片。已连接的 yyyy 覆盖安装 0.2.0（5）并启动，进程 13529。主应用签名同时有 App Group 和钥匙串分组；小组件签名只有同一钥匙串分组。未卸载、未清数据。未部署、未调用模型。
 - 侧载包 `artifacts/sideload-20261103-171141/WriteRight-0.2.0-5-sideload.ipa`（5,823,632 字节，SHA-256 `0899c905bed41a4e4d995635f9c1ff2c3dc559f43268eb9c594e2399b3ef316d`）。解压后主应用与小组件都能读到该 App Group，无 `embedded.mobileprovision`，`NSSupportsLiveActivities` 为 true，扩展点为 WidgetKit。公开云配置检查通过。接收方需自行重签；iLoader 2.4.1 仍不能单独登记扩展。这份包不含本机开发钥匙串分组。
+
+## 2026-11-03 侧载小组件读不到照片和记录
+
+- 开发者手机上的 0.2.0（5）能显示照片、待办和灵感链接，是因为真机签名把主应用和小组件都放进钥匙串分组 `397U98N75V.com.yiyun.essaypilot.dev`。0.2.0（5）侧载包只有 App Group。免费重签的小组件描述文件通常没有这个组，小组件读不到共享目录，照片保持纯色，记录和链接也是空的。
+- 侧载签名改为同时带上 App Group 和 `$(AppIdentifierPrefix)com.yiyun.essaypilot.dev`。重签工具应把前缀换成接收方团队。模拟器仍用原来的 `Widget.entitlements`，不受这份侧载权限影响。
+- 新包 `artifacts/sideload-20261103-182410/WriteRight-0.2.0-6-sideload.ipa`（5,823,832 字节，SHA-256 `92a3e858ce296cfafc92f95862a62fc5646ca8e1b15e1617fa215ab7aa85c5a9`）。解压后主应用与小组件的签名里都有该 App Group 和钥匙串占位，无描述文件，实时活动与 WidgetKit 扩展点检查通过。公开云配置检查通过。尚未在接收方手机上重签验收。
+
+## 2026-11-05 英语二翻译批改与练习重排
+
+### 完成范围
+
+- 核查现有文本批改、照片直批、SwiftData文档、服务端持久Job及报告流程后，新增独立T/15分题型。继续使用服务端DeepSeekAdapter、deepseek-flash及既有配置，不在客户端新增密钥。
+- 练习页改为先选小作文/大作文/翻译，再选照片或文字；保留任务、草稿、同题再练、最近报告与历史入口。最大无障碍字号题型单列，操作图标与文字纵排；历史和报告四类筛选在无障碍字号用菜单。
+- 文字翻译支持英文原文、中文译文、可选参考译文及练习要求；原文/参考变化产生新修订并失效确认。照片以task原文/essay译文角色与页序直接一起批改，不调用OCR或中间转录；参考译文与题型变化保存草稿，后台切换主动保存。原图继续可回看，翻译原图标签区分“英文原文”“译文”。
+- 独立KY_EN2_TRANSLATION_V1 / WRITERIGHT_TRANSLATION_V1及3.0.0报告合同。逐句展示原句、原译、采分点与实得、详细解释、主干/句法与译法、修改译文；完整修改稿加粗主要改动、列理由并可复制；复盘给薄弱点、词组/句法及译法，可复用收藏。
+- 服务端校验模拟采分点合计15、每点0.25精度、明确5句专项的每句3分/3–4点、原文/原译逐字引用及覆盖、图片页码/角色/指纹、缺题/疑字保护、错字引用出现次数。总分由程序计算各点合计减全文错字扣分（每3个0.5，余1–2个0.25，最低0），模型不直接提供总分。缺原文、读图不清或覆盖不全不出总分和完整修改稿，疑点不判学生错误。
+- 新增可选referenceTranslation/translationReview文档字段，旧作文文档/报告保持可读。文本/照片提交及重试携带参考译文，不可变快照和幂等Hash纳入照片参考文本。T独立统计，不计算中文“每100英文词错误密度”。A/B评分与旧合同保留。
+- 迁移20261105100000_translation_grading扩大task/report的part约束，并把数据库分数改为numeric(5,2)，保留14.75。只在本地Supabase验证，已登记本地迁移历史。RLS和服务端函数权限不变。
+
+### 实际检查与证据
+
+- `npm run env:check`通过；`npm run check`通过；`npm test` **75 passed / 0 failed**（新增10条翻译测试，覆盖分数/引用/覆盖/缺题/页码/疑字/持久任务恢复/参考快照与幂等/JSON修复/专项限制）。
+- `npm run test:db` **8 files / 87 tests PASS**（含9条翻译队列、参考快照、14.75精度、满分约束检查及既有隔离回归）。
+- `npm run ios:generate`、`npm run ios:build`通过。
+- 第一轮iPhone 17模拟器：全量iOS单元 **110/110** 通过，选择的照片直批、翻译及草稿恢复UI **4/4** 通过：`artifacts/ios-tests-20261105-174542.xcresult`。
+- 大字号布局修正后：翻译单元 **4/4**、UI **9/9** 通过（GradingFlowTests、TranslationFlowTests、WritingFlowTests全套），覆盖原有作文提交与四种报告阅读、浅深色/最大字号、照片翻译14.75报告、逐句阅读与复制、后台保存、重新打开、历史筛选、文字切照片：`artifacts/ios-tests-20261105-175218.xcresult`。
+- 已实际查看浅色练习页、深色最大字号及逐句报告截图。最终截图：`artifacts/translation-final-20261105/translation-practice-light.png`、`translation-practice-dark-accessibility.png`、`translation-sentence-analysis.png`。UI报告为明确隔离的Debug合成数据，不能作为实际模型质量证据。
+- `git diff --check`通过。规范、设计系统、阶段计划与`docs/TranslationGrading.md`同步更新。
+
+### 尚未完成
+
+- 未进行真实DeepSeek翻译文字/照片调用，未评估人工评分一致性、合理同义译法、语义扣分是否重复、复杂长句与多页手写质量；真机相机/完整VoiceOver仍待验收，P9不标完成。
+- 未部署云端函数/迁移，未改生产数据、计费、签名或安装包。发布依赖及旧客户端不认识T的同步兼容边界记录在`docs/TranslationGrading.md`；需先数据库迁移、再函数、再新客户端，并在正式多版本发布前明确兼容策略。
+- 本轮保留工作区原有侧载脚本、权限、侧载说明、进度及未跟踪PDF等改动，没有将这些既有改动作为本轮交付。
+
+
+## 2026-11-05 翻译云端部署与真实DeepSeek联调（后续明确授权）
+
+- 用户明确要求部署和真实联调。先只读核对现有EssayPilot-dev（tdcxdiqvrfmppaqikgxu）：ACTIVE_HEALTHY，9条迁移仅缺翻译迁移，4个账号、8个题目、11份提交与报告，无排队/运行任务，既有每分钟cron启用。没有创建其他云项目或更改套餐。
+- 新增`scripts/apply-translation-cloud-migration.mjs`，核对linked ref、锁/执行超时、单一事务执行版本化SQL并登记原始语句，已应用20261105100000；再次运行只核对已登记原文且通过。分数由numeric(4,1)扩为numeric(5,2)，A/B原有范围保留，新增T15分。
+- 依次完成迁移与三个函数部署：submit-grading v8、submit-photo-grading v7、grading-worker v11，全部ACTIVE。提交JWT保持true，Worker保持false并由既有x-worker-key认证；其余函数、DeepSeek/Worker密钥、SMTP与cron配置未改。
+- 新增`scripts/test-cloud-translation.mjs`及合成文字fixture（`tests/fixtures/grading/translation-live.json`），使用既有deepseek-flash进行真实云验收，**41项通过**。三份任务仅提交并轮询，由云端cron自动完成，不依赖本地Worker：五句专项文字、两页英文+两页中文照片直批、缺原文文字反馈。两页图片为本机绘制的合成印刷文本，不能算手写验收。
+- 文字报告12.75/15、照片报告13.75/15；文字固定每句3分，照片按内容量划点，因此不是同口径重复评分波动评测。两者均覆盖5句、3–5个积累表达，识别第四句否定漏译，原译“答按”未被预先修正，在建议中改为“答案”且错字单列扣0.25。缺原文报告分数为空，不猜测英文、不出完整修改稿/错字扣分。
+- 实际验证：同键重复提交不新开任务；更换参考译文同键409；每句/全文分值一致；保存分数与JSON精确相同；4张原图角色/页码正确；照片提交和source_sentences无全文转录；其他账号报告404、原图不可读，本人可回看；三份任务均有真实provider token记录。照片任务一次队列重试后完成，初次重试原因本轮未单独定位，不伪称无重试。
+- 直接从仓库提取当前Swift领域类型，对三份真实报告执行与客户端相同ISO8601策略的解码，再编码/解码相等，全部通过。原生解码摘要`artifacts/cloud-translation-20261105/native-decoding.json`。本轮不修改iOS实现，也未重新打包/安装手机。
+- 两个一次性合成账号通过delete-account与管理API清理，管理API回读确认均不存在；真实原文/图片/完整模型报告仅ignored `tests/private/cloud-translation/`。未读取或修改既有用户作文，未向真实邮箱发验证码。
+- 证据：`artifacts/cloud-translation-20261105/2026-11-05T10-30-40-703Z/acceptance.json`（41项、分数、耗时、provider用量与清理结果）、`cloud-final-state.json`（迁移/精度/RLS/cron/存量及图片清理回读）。
+- 本轮重新执行`npm run env:check`、`npm run check`、`npm test`（75/75）通过；新增两个部署/验收脚本`node --check`及`git diff --check`通过。没有因仅新增部署脚本而重复iOS界面全套；上一轮110单元/9UI证据继续保留，真实DTO解码是本轮额外云合同证据。
+- 已更新云配置、翻译合同、阶段计划和本进度。剩余：人工评分准确性/同义译法/重复扣分基线，真实多页手写，真机相机及旧客户端不认识T的正式多版本策略；P9整体仍未完成。未更改计费、macOS、签名或安装包；保留工作区其他既有改动，未提交或推送Git。
+
+- 最终回读已完成：迁移10条，score_scale=2，相关三表RLS均开启，既有cron启用且最近3次调度成功；测试4张图片剩余0、T测试题目剩余0。账号/题目/提交/报告仍分别为4/8/11/11，与部署前基线一致。
+- 补充可复现的`scripts/generate-translation-fixtures.swift`，从合成JSON生成四张印刷照片到ignored目录；实际运行通过，不包含密钥或机器绝对路径。后续联调可按翻译文档先生成图片再执行云测试。
+
+
+## 2026-11-05 翻译功能IPA交付
+
+- 用户要求提供IPA。沿用现有侧载脚本，将当前代码构建为真机Release **0.2.0（7）**；版本通过构建参数覆盖，主应用/小组件均为构建7，保持原Bundle ID。包含翻译文字/照片批改、详细逐句报告与新版练习页，连接本轮已部署的EssayPilot-dev。
+- 文件：`artifacts/sideload-20261105-191512/WriteRight-0.2.0-7-sideload.ipa`，5,900,960字节，SHA-256 `4450d7afaa80e7c5ca2f9cc158f20120e33052c8ec831bb07ebd7ca2227ed778`；同目录附`.sha256`、`checks.json`与`build.log`。
+- 实际检查：XcodeGen、真机Release构建、ZIP/Payload安全路径、主应用/小组件版本一致、最低iOS17及IOS Mach-O平台、公开HTTPS云地址/key、无描述文件/私钥/xcconfig/env文件、无已配置服务端凭据、临时签名验证、App Group/接收方钥匙串分组占位、WidgetKit与实时活动声明、翻译报告类型已编入、DEBUG合成批改未编入，全部通过；`bash -n scripts/package-ios-sideload.sh`及`git diff --check`通过。
+- 接收方需用自己的账户重新签名安装；本轮没有覆盖安装手机或验证接收方重签，不以Release构建代替真机验收。未重新部署云端、调用模型、修改签名证书或改动用户数据；此前75后端、87数据库、原生/UI与41项真实云联调证据保留。
+
+## 2026-11-05～06 组合练习、删除操作与照片小组件修复
+
+### 已完成
+
+- 用户反馈侧载自选照片小组件为系统灰色占位。截图不能确定唯一根因，本轮排查并修复大图完整解码/重复读取、背景尺寸扩张、共享副本过期/删除复活与共享失败误报成功等代码风险。ImageIO最大边600px，保存不超过180KB；Provider一次解码，视图固定容器裁剪；版本化背景/更新时间/删除墓碑，坏副本回退；钥匙串更新后新增且保留App Group双通道。旧JPEG兼容，记录快照时间相同优先隐私关闭，共享权限确实不可用给明确重签提示。
+- 小作文/大作文/翻译统一练习编辑页，两侧分别选文字/照片，四种组合均可；切换保存两种本机输入，仅提交选中来源，后台保存和移除最后一张图的空状态不丢失。文字独立焦点，输入期间隐藏底部操作栏、提供收键盘。纯文字沿用原端点，照片与手工文字一起直批，无OCR或额外转录确认。
+- 新不可变textInputs快照参与客户端/服务端幂等hash，参考译文同时计入校验。修复照片报告应用漏算reference hash、只有题图+文字回答的重试识别、上传保存覆盖未选输入，以及修改草稿仍锁到旧Job的问题。文字侧逐句原句/ID精确匹配、页码为null，图片侧引用真实页；历史合同继续可读。
+- “继续写”过滤内容未变的已提交稿，菜单可删除草稿并5秒撤销；“再写一稿”去重并可移除再练入口/撤销，仅本机按账号隐藏快捷入口，历史报告保留。最近报告与再练最多3条；报告支持同题新稿和保留作答修改重提。
+- 新`20261105200000_mixed_practice.sql`和pgTAP，扩展service-only入队guard允许题图+文字回答，保持用户/资产/路径绑定。A/B混合报告2.4.0、T混合3.1.0；原量表和旧纯照片合同保留。规范、设计系统、云说明、侧载说明及`docs/MixedPracticeAndWidgets.md`同步。
+
+### 实际检查
+
+- `npm run env:check`、`npm run check`通过；`npm test` **78/78**；`npm run test:db` **9 files / 93 tests PASS**。新增覆盖混合双向输入/合同、幂等及同侧双来源拒绝。本地迁移已应用并登记。
+- `npm run ios:generate`和`npm run ios:build`通过。新增PracticeInputTests 4项、WidgetPhotoReliabilityTests 2项，覆盖模式保留、四组合快照、reference指纹、最后照片清空、草稿/再练删除语义、大图缩图和损坏/删除副本。
+- 全量原生单元 **116/116**：`artifacts/ios-tests-20261105-235352.xcresult`；再次全116及组合/翻译5UI通过：`artifacts/ios-tests-20261106-000515.xcresult`。
+- 系统相册选择/移除背景与SpringBoard照片小组件测试通过：`artifacts/ios-tests-20261105-235804.xcresult`中ProfileCustomizationTests与SystemWidgetTests。该批另有草稿删除后在撤销窗口内立即强杀的旧用例失败，改为按Home提交删除再终止后，在000515结果中复验通过；不把整个235804批次写成全绿。
+- 原文字流程回归发现并修正共享FocusState导致题目失焦及键盘被底部栏挤占。最终文字提交/四类报告/收藏删除、后台保存、返回重启恢复3UI均通过：`artifacts/ios-tests-20261106-002655.xcresult`。最终生产代码上的组合3UI再次全部通过：`artifacts/ios-tests-20261106-003143.xcresult`。账号及其它文字草稿用例也分批通过，但未运行全部历史UI，尤其旧OCR LiveAcceptance不作为本轮证据。
+- 已查看真实桌面照片widget截图`artifacts/practice-widget-20261106/widget-custom-photo-real-springboard.png`，组合编辑页和撤销截图`artifacts/practice-mixed-20261106/`。图片是合成测试照片，不是用户私人照片。
+
+### 云部署及真实模型
+
+- 沿用用户本聊天已明确授权的云部署/真实联调，目标EssayPilot-dev（tdcxdiqvrfmppaqikgxu）。新增原子迁移脚本，已应用并登记20261105200000；`grading-worker` v12与`submit-photo-grading` v8均ACTIVE，其它函数/密钥/SMTP/cron/计费未改。
+- 本机管理域名TLS路线一度不可达；只在相关命令临时使用回环CONNECT转发到已验证的管理域名IP，TLS仍校验原域名、不解密、不读取令牌、不写全局网络配置。业务域名保持原HTTPS地址。
+- 四组合成真实deepseek-flash任务（A/T × 文字题目+照片作答、照片题目+文字作答）**40项通过**。A两组7/10；T为13.75/15和13.25/15。校验原始文字完整保留、同键复用/修改409、真实图片清单、逐句建议、文字侧无虚构页码、跨账号404和provider用量；由既有云cron完成，不手动触发Worker。翻译任务有合同校验/队列重试后完成，T-text-task有3次Worker尝试，不宣称首轮无重试。
+- 云证据：`artifacts/cloud-mixed/2026-11-05T16-16-24-895Z/acceptance.json`；四份真实报告经Swift领域DTO解码/往返编码通过，`artifacts/practice-widget-fixes-20261106/native-decoding.json`。完整报告/原图只留ignored `tests/private/cloud-mixed/`。
+- 两个一次性合成账号均delete-account并管理API确认不存在；最终审计测试图片0、activeJobs0、账号4/题目8/报告11，与既有基线一致，证据`artifacts/practice-widget-fixes-20261106/cloud-audit.json`及`functions.json`。未读取或修改既有用户作文，未发真实邮箱测试验证码。
+
+### 最终IPA与边界
+
+- 最终交付：`artifacts/sideload-20261106-003141/WriteRight-0.2.0-8-sideload.ipa`，**5,996,804字节**，SHA-256 `1c6b56c48a17d23ab304820146596bd792edeecd030dff46667c56abeab510bf`。包括最终独立焦点和键盘空间修正。此前001623/002533目录的构建8候选已由此包替代，不作交付。
+- App/Widget版本均0.2.0（8），iPhoneOS Release / iOS17+；ZIP/Payload、Mach-O平台、原Bundle ID、云公开地址/key、配置私钥和服务端凭据排除、App Group/接收方钥匙串占位、临时签名、WidgetKit/实时活动与正式编入的新类型检查均通过。DEBUG合成批改未编入；同目录checks.json、sha256与build.log。
+- 接收方需使用原签名账号/标识覆盖安装并保留小组件扩展和共享权限；本轮未在原反馈侧载手机安装验证，不能承诺截图问题已在该机复现并消除。模拟器不代表真实手写/相机或所有主题尺寸验收；模型联调不等于人工评分质量达标。P9仍未整体完成，正式多版本兼容待定。
+- 未提交/推送Git，保留工作区前序改动与未跟踪文档；没有更改签名证书、系统版本或计费。新增脚本语法及`git diff --check`最终检查另见下方记录。
+
+- 收尾检查：新增两个组合迁移/联调脚本`node --check`、侧载脚本`bash -n`及`git diff --check`全部通过；汇总`artifacts/practice-widget-fixes-20261106/validation-summary.json`。最终包SHA与打包脚本生成的`.sha256`一致。
