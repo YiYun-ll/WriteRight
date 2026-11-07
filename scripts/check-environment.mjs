@@ -17,12 +17,9 @@ function check(name, command, args) {
   if (!ok) missing++;
 }
 
-console.log('EssayPilot environment check (no secret values are printed)');
+console.log('WriteRight environment check (no secret values are printed)');
 check('Git', 'git', ['--version']);
 check('Node.js', 'node', ['--version']);
-check('Codex CLI', 'codex', ['--version']);
-check('Cursor CLI', 'cursor', ['--version']);
-check('Kimi Code CLI', 'kimi', ['--version']);
 check('Deno', 'deno', ['--version']);
 check('Supabase CLI', resolve(root, 'node_modules/.bin/supabase'), ['--version']);
 check('Full Xcode', 'xcodebuild', ['-version']);
