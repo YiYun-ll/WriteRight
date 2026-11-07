@@ -34,7 +34,6 @@ ditto --norsrc --noextattr "$task_app" "$task_stage/Payload/EssayPilot.app"
 
 # Drop any device-specific profile. Keep an ad-hoc signature that carries the
 # App Group entitlement so a signer which registers extensions can copy it.
-# iLoader 2.4.1 ignores this and reuses the main profile; it cannot enable the widget.
 find "$task_stage" -name embedded.mobileprovision -type f -delete
 find "$task_stage" -type d -name _CodeSignature -prune -exec rm -rf {} +
 task_app_entitlements="$task_root/ios/Config/Shared.entitlements"

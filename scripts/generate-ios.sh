@@ -6,7 +6,7 @@ if [[ ! -x "$task_generator" ]]; then
   task_generator="$(command -v xcodegen || true)"
 fi
 if [[ -z "$task_generator" ]]; then
-  print -u2 'XcodeGen is required. See docs/DevelopmentSetup.md.'
+  print -u2 'XcodeGen is required. See docs/development.md.'
   exit 1
 fi
 cd "$task_root/ios"
