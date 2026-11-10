@@ -121,8 +121,13 @@ import WidgetKit
         else { openStore() }
     }
 
+    private static let offlineRestoreMessage = "当前离线，已打开这台设备上的练习。联网后可直接重试批改和同步。"
     var canAuthenticate: Bool { authService != nil }
-    var canGrade: Bool { account != nil && gradingService != nil && !isOfflineRestore }
+    var canGrade: Bool { account != nil && gradingService != nil }
+    private func cloudConnectionSucceeded() {
+        isOfflineRestore = false
+        if authErrorMessage == Self.offlineRestoreMessage { authErrorMessage = nil }
+    }
     private var sessionCache: LocalSessionCache {
         var namespace = storeRoot?.standardizedFileURL.path ?? "default"
         #if DEBUG
@@ -141,7 +146,7 @@ import WidgetKit
         } catch {
             if let cached = sessionCache.load() {
                 activate(cached); isOfflineRestore = true; syncState = "离线，本机可用"
-                authErrorMessage = "当前离线，已打开这台设备上的练习。联网后可登录并同步。"
+                authErrorMessage = Self.offlineRestoreMessage
             } else { authErrorMessage = "未能恢复登录，请稍后重试。" }
         }
         await refreshActiveGradingJobs()
@@ -183,6 +188,7 @@ import WidgetKit
         do {
             let session = try await authService.verifyCode(email: email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(), code: code)
             activate(session)
+            cloudConnectionSucceeded()
             authErrorMessage = nil
             return true
         } catch {
@@ -396,6 +402,7 @@ import WidgetKit
             )
             guard account?.userID == ownerID else { return nil }
             guard response.jobId == durableJob.id else { throw GradingServiceError.invalidResponse }
+            cloudConnectionSucceeded()
             try apply(response, submissionID: submission.id)
             startPolling(durableJob.id)
             return gradingJobs.first { $0.id == durableJob.id }
@@ -423,6 +430,7 @@ import WidgetKit
             let response = try await gradingService.status(jobID: job.id)
             guard account?.userID == ownerID else { return }
             guard response.jobId == job.id else { throw GradingServiceError.invalidResponse }
+            cloudConnectionSucceeded()
             try apply(response, submissionID: job.submissionID)
             gradingConnectionIssues.removeValue(forKey: job.id)
             if response.status == .queued || response.status == .running { startPolling(job.id) }
@@ -452,6 +460,7 @@ import WidgetKit
             }
             guard account?.userID == ownerID else { return }
             guard response.jobId == job.id else { throw GradingServiceError.invalidResponse }
+            cloudConnectionSucceeded()
             try apply(response, submissionID: submission.id)
             startPolling(job.id)
         } catch {
@@ -600,6 +609,7 @@ import WidgetKit
             durableJob = job; try reload(); photoUploadPhase = "uploading"
             let response = try await gradingService.submitPhotos(taskID: saved.task.id, part: saved.task.part, submissionID: submission.id, idemKey: key, taskImages: topic.1, essayImages: essay.1, referenceTranslation: saved.task.referenceTranslation, textInputs: saved.mixedTextInputs)
             guard account?.userID == owner, response.jobId == key else { throw AuthServiceError.invalidSession }
+            cloudConnectionSucceeded()
             try apply(response, submissionID: submission.id); startPolling(key)
             return gradingJobs.first { $0.id == key }
         } catch {
@@ -739,6 +749,7 @@ import WidgetKit
             do {
                 let summary = try await AccountSynchronizer.sync(userID: userID, repository: repository, transport: transport)
                 guard let self, self.account?.userID == userID else { return }
+                self.cloudConnectionSucceeded()
                 try self.reload()
                 await self.syncCompanion()
                 self.syncState = summary.conflicts > 0 ? "有冲突副本" : "已同步"

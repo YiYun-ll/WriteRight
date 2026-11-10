@@ -252,7 +252,9 @@ struct PhotoPracticeView: View {
                     if app.canAuthenticate { Button("登录后开始批改") { login = true }.buttonStyle(MainActionStyle()).accessibilityIdentifier("photo-login") }
                     else { Text("云端连接暂不可用，请稍后再试。照片可保存在草稿中。").font(.footnote) }
                 } else {
-                    Text("提交后，文字和照片会发送给 DeepSeek 用于批改；照片保存在你的云端私有空间供报告回看。")
+                    Text(app.isOfflineRestore
+                        ? "当前网络连接未恢复，提交时会重新连接；草稿和照片已保存在本机。"
+                        : "提交后，文字和照片会发送给 DeepSeek 用于批改；照片保存在你的云端私有空间供报告回看。")
                         .font(.footnote).foregroundStyle(WriteRightTheme.secondary).fixedSize(horizontal: false, vertical: true)
                     Button("提交批改") { model.begin("正在整理照片") { await model.submit() } }
                         .buttonStyle(MainActionStyle()).disabled(!model.canSubmit).accessibilityIdentifier("photo-submit")

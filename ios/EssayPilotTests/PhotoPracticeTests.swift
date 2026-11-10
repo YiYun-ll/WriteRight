@@ -102,6 +102,34 @@ import XCTest
         XCTAssertEqual(deleted, [first, second, first], "leaving the screen keeps the decision")
     }
 
+    func testOfflineRestoreCanRetryMixedPhotoAndTextSubmission() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let auth = RestoreAuth()
+        let online = AppModel(authService: auth, storeRoot: root, gradingService: UITestGradingService())
+        let loggedIn = await online.verifyCode(email: "photo@example.com", code: "123456")
+        XCTAssertTrue(loggedIn)
+        let editor = PhotoPracticeModel(app: online)
+        await editor.add([try XCTUnwrap(UIImage(data: ScanSampleImage.jpeg(text: "Task page.")))], role: .task)
+        editor.answerMode = .text
+        editor.essayText = "I has a book. It is useful."
+        let document = try XCTUnwrap(editor.saveDraft())
+
+        await auth.failRestore()
+        let offline = AppModel(authService: auth, storeRoot: root, gradingService: UITestGradingService())
+        let observation = Task { await offline.observeAuth() }
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertTrue(offline.isOfflineRestore)
+        XCTAssertTrue(offline.canGrade)
+
+        let resumed = PhotoPracticeModel(app: offline, draft: document)
+        await resumed.submit()
+        XCTAssertNotNil(resumed.jobID)
+        XCTAssertNil(resumed.error)
+        XCTAssertFalse(offline.isOfflineRestore)
+        observation.cancel()
+    }
+
     func testAccountSwitchBlocksPhotosFromSavingToAnotherAccount() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }

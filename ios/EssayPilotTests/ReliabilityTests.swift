@@ -75,13 +75,16 @@ import XCTest
         XCTAssertEqual(destination.gradingReports.count, 1)
     }
 
-    func testOfflineColdStartRestoresLocalWorkspaceButNotCloudGrading() async throws {
+    func testOfflineColdStartRestoresAccountAndAllowsCloudGradingRetry() async throws {
         let directory = root(); defer { try? FileManager.default.removeItem(at: directory) }
         let auth = RestoreAuth()
         let online = AppModel(authService: auth, storeRoot: directory, gradingService: UITestGradingService())
         let loggedIn = await online.verifyCode(email: "offline@example.com", code: "123456")
         XCTAssertTrue(loggedIn)
-        let document = try XCTUnwrap(online.createDraft(part: .a))
+        var document = try XCTUnwrap(online.createDraft(part: .a))
+        document.task.prompt = "Invite a friend."
+        document.task.confirmedAt = .now
+        document.body = "I has a book. It is useful."
         try online.repository?.save(document)
 
         await auth.failRestore()
@@ -90,9 +93,34 @@ import XCTest
         try await Task.sleep(for: .milliseconds(50))
         XCTAssertEqual(offline.account?.userID, online.account?.userID)
         XCTAssertTrue(offline.isOfflineRestore)
-        XCTAssertFalse(offline.canGrade)
+        XCTAssertTrue(offline.canGrade)
         XCTAssertEqual(offline.drafts.map(\.id), [document.id])
         XCTAssertEqual(offline.syncState, "离线，本机可用")
+
+        let submitted = await offline.submitGrading(document)
+        let job = try XCTUnwrap(submitted)
+        XCTAssertEqual(job.status, .completed)
+        XCTAssertFalse(offline.isOfflineRestore)
+        observation.cancel()
+    }
+
+    func testSuccessfulSyncClearsOfflineRestore() async throws {
+        let directory = root(); defer { try? FileManager.default.removeItem(at: directory) }
+        let auth = RestoreAuth()
+        let online = AppModel(authService: auth, storeRoot: directory, syncTransport: SyncDirectory())
+        let loggedIn = await online.verifyCode(email: "offline@example.com", code: "123456")
+        XCTAssertTrue(loggedIn)
+
+        await auth.failRestore()
+        let offline = AppModel(authService: auth, storeRoot: directory, syncTransport: SyncDirectory())
+        let observation = Task { await offline.observeAuth() }
+        try await Task.sleep(for: .milliseconds(50))
+        XCTAssertTrue(offline.isOfflineRestore)
+
+        await offline.syncNow()
+        XCTAssertFalse(offline.isOfflineRestore)
+        XCTAssertNil(offline.authErrorMessage)
+        XCTAssertEqual(offline.syncState, "已同步")
         observation.cancel()
     }
 
@@ -180,7 +208,7 @@ import XCTest
     }
 }
 
-private actor RestoreAuth: AuthService {
+actor RestoreAuth: AuthService {
     private var session: AccountSession?
     private var fails = false
     private let id = UUID(uuidString: "33333333-3333-4333-8333-333333333333")!
